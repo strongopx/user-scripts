@@ -4,7 +4,7 @@
 // @name:zh-CN     必应词典
 // @description Select any word in any web to show it's definition from Bing Dict.
 // @description:zh-CN 划词翻译，使用必应词典
-// @version  1.3.3
+// @version  1.3.3.1
 // @match    http://*/*
 // @match    https://*/*
 // -match    https://github.com/*
@@ -18,7 +18,7 @@
 Change Log:
 v1.3.3:
 	28 Jan 2018, Fix dict provider overlap with result.
-  						 Add test cases.
+  			Add test cases.
 v1.3.2:
 	27 Jan 2018, Add dict provider name: Bing Dict.
 v1.3.1:
@@ -310,7 +310,7 @@ div#ATGT-bing-dict-result-wrapper ul li span {
     word = word.replace(/^\s*|\s*$/g, "");
     if (word.length == 0) {
       setResult("");
-      lastSearchWord = "";x
+      lastSearchWord = "";
       return;
     }
     if (word in dictCache && dictCache[word]) {
