@@ -2,7 +2,7 @@
 // @name         12306 bring me on the train to home
 // @name:zh-CN         12306带我坐火车回家
 // @namespace    ATGT
-// @version      1.6.1
+// @version      1.7
 // @description  Please bring me home.
 // Functionality:
 //    * remember almost all options, restore the options after refresh, if login page show, need to refresh again
@@ -19,6 +19,7 @@
 //    * 默认发车时间改为 07:00-19:00
 // @author       strongopwh@hotmail.com
 // @updateURL  https://raw.githubusercontent.com/strongop/user-scripts/master/12306-bring-me-home.user.js
+// @downloadURL  https://raw.githubusercontent.com/strongop/user-scripts/master/12306-bring-me-home.user.js
 // @supportURL  https://github.com/strongop/user-scripts/issues
 // @match        https://kyfw.12306.cn/otn/leftTicket/*
 // @icon         https://kyfw.12306.cn/otn/resources/images/ots/favicon.ico
@@ -47,62 +48,94 @@ console.log("++++++ 12306");
     $("div#myfix_yh").remove();
   }
 
-  function waitForNodeAttr(targetSel, subtree, nodeFilter, nodeHandler, attrFilter, attrHandler) {
-    console.log("waitForNode ", targetSel, nodeFilter, nodeHandler ? nodeHandler.name : null, attrFilter, attrHandler ? attrHandler.name : null);
+  function waitMutationEvent(eventType, targetSel, options, handler, filter) {
+    if (!eventType || !targetSel || !handler)
+      return;
+    console.log("\n>>>> waitMutationEvent ", eventType, targetSel, options,
+                  filter, handler ? handler.name : null);
+
+    if (typeof options !== "object") {
+      options = { };
+    }
+
+    if (isFirefox) {
+      log("Workaround firefox MutationObserver bug.");
+      if (options.once)
+        $(targetSel).one(eventType, options, function (e) { handler.call(e.target) });
+      else
+        $(targetSel).bind(eventType, options, function (e) { handler.call(e.target) });
+      return;
+    }
     var MutationObserver    = window.MutationObserver || window.WebKitMutationObserver;
 
-    // Select the node that will be observed for mutations
     var targetNode = document;
     if (typeof targetSel === "object")
       targetNode = targetSel;
     else if (typeof targetSel === "string")
       targetNode = document.querySelector(targetSel);
-
     // console.log("targetNode", targetNode);
 
-    // Options for the observer (which mutations to observe)
     var config = {
-      attributes: !!attrHandler,
-      childList: !!nodeHandler,
-      subtree: subtree,
-      attributeFilter: attrFilter ? attrFilter : undefined,
+      attributes: undefined,
+      childList: undefined,
+      subtree: options.subtree,
+      attributeFilter: undefined,
     };
+    if (eventType.indexOf("DOMNode") > -1)
+      config.childList = true;
+    else if (eventType.indexOf("DOMAttr") > -1) {
+      config.attributes = true;
+      config.attributeFilter = filter;
+    } else {
+      throw new Error("No event type specified.");
+    }
 
-    // Callback function to execute when mutations are observed
     var callback = function(mutationsList) {
       for(var mutation of mutationsList) {
-        if (nodeHandler && mutation.type == 'childList') {
+        if (handler && mutation.type == 'childList') {
           //console.log('A child node has been added ', mutation.addedNodes, ' or removed.');
-          for (var node of mutation.addedNodes) {
-            if (!nodeFilter || nodeFilter(node)) {
-              setTimeout(nodeHandler, 0, mutation.target);
-              this.disconnect();
-              break;
+          var nodes = [];
+          if (eventType == "DOMNodeInserted")
+            nodes = mutation.addedNodes;
+          else if (eventType == "DOMNodeRemoved")
+            nodes = mutation.removedNodes;
+          for (var node of nodes) {
+            if (!filter || filter(node)) {
+              setTimeout(function () { handler.call(mutation.target, eventType); }, 0);
+              if (options.once) {
+                this.disconnect();
+                return;
+              }
             }
           }
-        } else if (attrHandler && mutation.type == 'attributes') {
+        } else if (eventType == "DOMAttrModified" && handler && mutation.type == 'attributes') {
           console.log('The ' + mutation.attributeName + ' of ', mutation.target, ' attribute was modified.');
-          setTimeout(attrHandler, 0, mutation.target);
+          setTimeout(function () { handler.call(mutation.target, mutation.attributeName, mutation.oldValue); }, 0);
+          if (options.once) {
+            this.disconnect();
+            return;
+          }
+        } else {
+          log("Unhandled MutationObserver event.");
         }
+
       }
     };
 
-    // Create an observer instance linked to the callback function
     var observer = new MutationObserver(callback);
-    // Start observing the target node for configured mutations
     observer.observe(targetNode, config);
     // Later, you can stop observing
     //observer.disconnect();
+    return observer;
   }
 
   function reQueryIfTimeout() {
-      function reQueryHandler(target) {
-        if (target.type === "DOMAttrModified")
-          var node = $(this);
-        else
-          var node = $(target);
-        log("attr mod", node, node.text().replace(/\s*/g, ""));
-        if (node.prop("ATGT_reQuery_ongoing"))
+      function reQueryHandler(attrName, oldValue) {
+        var node = $(this);
+        //log("\nAttrMod", attrName, ":", oldValue, "->", node.attr(attrName),
+        //    " of ", node, node.text().replace(/\s*/g, ""));
+
+        if (node.prop("ATGT_reQuery_ongoing")/* || attrName !== "style"*/)
           return;
         function queryAgain(node) {
           if (node.text().indexOf("查询超时") < 0) {
@@ -112,7 +145,7 @@ console.log("++++++ 12306");
           var progbar = $(".dhx_modal_cover").css("display") !== "none";
           if (timeoutShow && !progbar) {
             logDate();
-            log("try send query");
+            log("Try send query");
             node.prop("ATGT_reQuery_ongoing", true);
             var queryBtn = $("#query_ticket");
             log("queryBtn", queryBtn);
@@ -124,11 +157,11 @@ console.log("++++++ 12306");
             setTimeout(queryAgain, nextQueryTime, node);
           } else if (progbar) {
             logDate();
-            log("query %congoing.", "color: blue;");
+            log("Query %congoing.", "color: blue;");
             setTimeout(queryAgain, 2000, node);
           } else {
             logDate();
-            log("query send %cok.", "color: green;");
+            log("Query send %cok.", "color: green;");
             node.prop("ATGT_reQuery_ongoing", false);
           }
         }
@@ -140,7 +173,7 @@ console.log("++++++ 12306");
       if (isFirefox)
         noTkt.bind("DOMAttrModified", reQueryHandler);
       else
-        waitForNodeAttr(this, false, null, null, ["style"], reQueryHandler);
+        waitMutationEvent("DOMAttrModified", this, {}, reQueryHandler, ["style"]);
     });
   }
 
@@ -150,27 +183,20 @@ console.log("++++++ 12306");
     $("#loginForm").css("z-index", 2000);
 
     /* expand ticket helper */
+    $(".quick-gif").css("z-index", 11);
     $("#show_more").click();
 
-    /* GaoTie only */
-    /* var GChk = $("div#cc_train_type_btn_all input[value='G'][name='cc_type']");
-    GChk.prop("checked", true); */
-
-    /* normal seat only */
-    /* $("ul#seat-list > li[name='二等座']").click();
-    $("ul#seat-list > li[name='一等座']").click();
-    $("ul#seat-list > li[name='硬座']").click();
-    $("ul#seat-list > li[name='无座']").click(); */
-
-    /* add 07:00--21:00 time */
-    $("select#cc_start_time").css("color", "red");
-    var goodTime = $('<option id=custom_time_opt value="07001900">07:00--19:00</option>');
-    //goodTime.insertBefore($("#cc_start_time > option:first-child"));
-    $("#cc_start_time").append(goodTime);
-    goodTime.prop("selected", true);
-    $("#cc_start_time").bind("change", function () {
-      log("start time changed");
-    });
+    /* add 07:00--19:00 time */
+    function appendCustomTimeToSelect() {
+      $("select#cc_start_time").css("color", "red");
+      var goodTime = $('<option id=custom_time_opt value="07001900">07:00--19:00</option>');
+      //goodTime.insertBefore($("#cc_start_time > option:first-child"));
+      $("#cc_start_time").append(goodTime);
+      goodTime.prop("selected", true);
+      $("#cc_start_time").bind("change", function () {
+        log("start time changed");
+      });
+    }
 
     function getCustomTime() {
       var inputs = $("div#custom_time > input");
@@ -205,7 +231,7 @@ console.log("++++++ 12306");
       var custT = getCustomTime();
       var tstr = custT[0];
       var tval = custT[1];
-      log("custom time: ", tstr, tval);
+      log("Custom time: ", tstr, tval);
       var goodTime = $("option#custom_time_opt");
       goodTime.replaceWith('<option id=custom_time_opt value="'+tval+'">'+tstr+'</option>');
       $("option#custom_time_opt").prop("selected", true);
@@ -228,6 +254,8 @@ console.log("++++++ 12306");
       $("div.pos-top").append($(custom_time_sel));
       $("div#custom_time > input").bind("input", updateCustomTime);
     }
+
+    appendCustomTimeToSelect();
     createCustomTime();
     setCustomTime(GM_getValue("customTime"));
     updateCustomTime();
@@ -235,8 +263,9 @@ console.log("++++++ 12306");
     /* no autosumbit */
     $("input#autoSubmit").prop("checked", false);
 
-    /* show only bookable */
+    /* don't overlap other checkboxes */
     $("div.sear-result span").css("position", "static");
+    /* show only bookable */
     $("input#avail_ticket").prop("checked", true);
     $("label[for='avail_ticket']").css("color", "red");
   }
@@ -245,20 +274,21 @@ console.log("++++++ 12306");
     function loadValue(options) {
       try {
         var storeName = options.storeName;
-        var storeValue = GM_getValue(storeName, "{[]}");
-        log("restore", storeName, storeValue);
+        var storeValue = GM_getValue(storeName);
+        //log("load", storeName, storeValue);
         storeValue = JSON.parse(storeValue);
-        log("restore", storeName, storeValue);
+        //log("load", storeName, storeValue);
         return storeValue;
       } catch (e) {
-        log("load", options.storeName, "failed.");
+        log("Load", options.storeName, "failed.");
         //log(e);
       }
     }
 
     function restoreTrainProp(options) {
-      log("restoreTrainProp", options);
+      log("restoreTrainProp");
       var storeValue = loadValue(options);
+      log("Loaded", options.storeName, storeValue);
       var propName = options.propName;
       var format = options.restoreFormat;
       var restoreFunc = options.restoreFunc;
@@ -268,16 +298,16 @@ console.log("++++++ 12306");
         else if (restoreFunc)
           restoreFunc(e);
         else
-          log("skip restore", options.storeName);
+          log("Skip restore", options.storeName);
       });
-      log("click close", $(options.addTriggerSel));
-      if (options.loadTrigger)
-        $(options.addTriggerSel).click();
+      if (options.loadDone) {
+        log("Load Done", $(options.loadedEventTarget));
+        options.loadDone();
+      }
     }
 
-    function saveTrainProp(event) {
-      log("saveTrainProp", event);
-      var options = event.data;
+    function saveTrainProp(options) {
+      log("saveTrainProp", options);
       var storeName = options.storeName;
       var propName = options.propName;
       var storeValue = [];
@@ -290,61 +320,100 @@ console.log("++++++ 12306");
     }
 
     function triggerTrainInfoLoad(options) {
-      log("trig load", options.loadTrigger);
-      waitForNodeAttr($(options.loadedTriggerSel).get(0), false, null, function (target) {
-        log("loaded trigger event.", target);
+      log("Trig load", options.loadTrigger ? options.loadTrigger.name : null,
+          "on event", options.loadedEventType, "of", options.loadedEventTarget);
+      waitMutationEvent(options.loadedEventType, $(options.loadedEventTarget).get(0),
+                        { once: true },
+                        function () {
+        log("Loaded trigger event from", this);
         options.loaded = true;
         setTimeout(rememberTrainProp, options.delay, options);
-      }, null, null);
+      });
+
       setTimeout(options.loadTrigger, options.loadDelay);
       return;
     }
 
-    function rememberTrainProp(options) {
-      log(">>> rememberTrainProp", options);
-      var prevValue = loadValue(options);
-      if (prevValue && prevValue.length && !options.loaded && options.loadTrigger) {
-        return triggerTrainInfoLoad(options);
+    function handleTrainPropChange(options) {
+      log("Handle prop add event.", options.addEventTarget, $(options.addEventTarget));
+      try {
+        $(options.addEventTarget).each(function (i, e) {
+          waitMutationEvent(options.addEventType, e, {},
+            function () {
+            setTimeout(saveTrainProp, options.delay, options);
+          });
+        });
+      } catch (e) {
+        log("Fall thru to bind event", options.addEventType, "of", options.addEventTarget);
+        $(options.addEventTarget).bind(options.addEventType, options, function (e) {
+          setTimeout(saveTrainProp, options.delay, options);
+        });
       }
-      log("train prop loaded", options);
-
-      restoreTrainProp(options);
-
-      $(options.addTriggerSel).bind(options.addEvent, options, function (e) {
-        setTimeout(saveTrainProp, e.data.delay, e);
-      });
-      $(options.removeTriggerSel).bind(options.removeEvent, options, function (e) {
-        setTimeout(saveTrainProp, e.data.delay, e);
-      });
+      log("Handle prop remove event.", options.removeEventTarget, $(options.removeEventTarget));
+      try {
+        $(options.removeEventTarget).each(function (i, e) {
+          waitMutationEvent(options.removeEventType, e, {},
+                            function () {
+            setTimeout(saveTrainProp, options.delay, options);
+          });
+        })
+      } catch (e) {
+        log("Fall thru to bind event", options.removeEventType, "of", options.removeEventTarget);
+        $(options.removeEventTarget).bind(options.removeEvent, options, function (e) {
+          setTimeout(saveTrainProp, options.delay, options);
+        });
+      }
 
       $(options.chain).each(function (i, e) {
         setTimeout(e, 0);
       });
     }
 
+    function rememberTrainProp(options) {
+      log("\n>>>>>>>>>>>>>>>>>>>> rememberTrainProp", options.storeName, " >>>>>>>>>>>>>>>>>>>>>>>>", options);
+
+      var prevValue = loadValue(options);
+      if ((prevValue && prevValue.length || options.forceTrigLoad) &&
+          !options.loaded && options.loadedEventType && options.loadedEventTarget) {
+        return triggerTrainInfoLoad(options);
+      }
+
+      if (options.processed) {
+        log ("already processed");
+        return;
+      }
+      options.processed = true;
+
+      if (options.loaded)
+        log("Train prop loaded");
+
+      restoreTrainProp(options);
+      handleTrainPropChange(options);
+    }
+
     var priorSeatOptions = {
       storeName : "seatType",
       propName: "name",
-      choosedSel : "div#sel-seat ul#seat-list > li.cur",
-      addEvent: "click",
-      addTriggerSel: "div#sel-seat > .quick-box-hd > a",
-      removeEvent: "DOMNodeRemoved",
-      removeTriggerSel: "div#prior_seat",
+      choosedSel : "#sel-seat ul#seat-list > li.cur",
+      addEventType: "DOMNodeInserted",
+      addEventTarget: "#prior_seat",
+      removeEventType: "DOMNodeRemoved",
+      removeEventTarget: "#prior_seat",
       delay: 200,
-      restoreFormat: "div#sel-seat ul#seat-list > li[%k='%v']",
+      restoreFormat: "#sel-seat ul#seat-list > li[%k='%v']",
     };
     rememberTrainProp(priorSeatOptions);
 
     var altDateOptions = {
       storeName : "altDate",
       propName: "name",
-      choosedSel : "div#sel-date ul#date-list > li.cur[train_date!='yes']",
-      addEvent: "click",
-      addTriggerSel: "div#sel-date > .quick-box-hd > a",
-      removeEvent: "DOMNodeRemoved",
-      removeTriggerSel: "div#prior_date",
+      choosedSel : "#sel-date ul#date-list > li.cur[train_date!='yes']",
+      addEventType: "DOMNodeInserted",
+      addEventTarget: "#prior_date",
+      removeEventType: "DOMNodeRemoved",
+      removeEventTarget: "#prior_date",
       delay: 200,
-      restoreFormat: "div#sel-date ul#date-list > li[%k='%v']",
+      restoreFormat: "#sel-date ul#date-list > li[%k='%v']",
     };
     rememberTrainProp(altDateOptions);
 
@@ -352,8 +421,8 @@ console.log("++++++ 12306");
       storeName : "priorTrainType",
       propName: "value",
       choosedSel : "ul#_ul_station_train_code > li > input:checked",
-      addEvent: "click",
-      addTriggerSel: "ul#_ul_station_train_code > li > input",
+      addEventType: "click",
+      addEventTarget: "#train_type_btn_all, ul#_ul_station_train_code > li > input",
       delay: 200,
       restoreFormat: "ul#_ul_station_train_code > li > input[%k='%v']",
     };
@@ -363,36 +432,45 @@ console.log("++++++ 12306");
       storeName : "priorFromStation",
       propName: "value",
       choosedSel : "ul#from_station_ul > li > input:checked",
-      addEvent: "click",
-      addTriggerSel: "ul#from_station_ul > li > input",
+      addEventType: "click",
+      addEventTarget: "#from_station_name_all, ul#from_station_ul > li > input",
+      forceTrigLoad: true,
+      loaded: $("ul#from_station_ul > li").length,
+      loadedEventType: "DOMNodeInserted",
+      loadedEventTarget: "ul#from_station_ul",
       delay: 200,
       restoreFormat: "ul#from_station_ul > li > input[%k='%v']",
     };
-    //$("#query_ticket").bind("click", function(e) { rememberTrainProp(priorFromStationOptions); });
+    rememberTrainProp(priorFromStationOptions);
 
     var priorToStationOptions = {
       storeName : "priorToStation",
       propName: "value",
       choosedSel : "ul#to_station_ul > li > input:checked",
-      addEvent: "click",
-      addTriggerSel: "ul#to_station_ul > li > input",
+      addEventType: "click",
+      addEventTarget: "#to_station_name_all, ul#to_station_ul > li > input",
+      forceTrigLoad: true,
+      loaded: $("ul#to_station_ul > li").length,
+      loadedEventType: "DOMNodeInserted",
+      loadedEventTarget: "ul#to_station_ul",
       delay: 200,
       restoreFormat: "ul#to_station_ul > li > input[%k='%v']",
     };
-    //$("#query_ticket").bind("click", function(e) { rememberTrainProp(priorToStationOptions); });
+    rememberTrainProp(priorToStationOptions);
 
     var buyerOptions = {
-      loadTrigger: $.showSelectBuyer, //function () { $("div#setion_postion > .wrap-left > a").click(); },
-      loaded: false,
       storeName : "buyer",
       propName: "p_value",
       choosedSel : "ul#buyer-list > li.cur",
-      addEvent: "click",
-      addTriggerSel: "div#sel-buyer > .quick-box-hd > a:first-child",
-      removeEvent: "DOMNodeRemoved",
-      removeTriggerSel: "div#setion_postion",
-      loadedEvent: "DOMNodeInserted",
-      loadedTriggerSel: "ul#buyer-list",
+      addEventType: "DOMNodeInserted",
+      addEventTarget: "#setion_postion",
+      removeEventType: "DOMNodeRemoved",
+      removeEventTarget: "#setion_postion",
+      loaded: $("ul#buyer-list > li").length,
+      loadTrigger: $.showSelectBuyer, //function () { $("div#setion_postion > .wrap-left > a").click(); },
+      loadDone: $.closeSelectBuyer,
+      loadedEventType: "DOMNodeInserted",
+      loadedEventTarget: "ul#buyer-list",
       delay: 200,
       loadDelay: 1000,
       restoreFormat: "ul#buyer-list > li[%k='%v']",
@@ -408,24 +486,22 @@ console.log("++++++ 12306");
     }
 
     var priorTrainOptions = {
-      loadTrigger: $.showYxTrain,
-      loaded: false,
       storeName : "priorTrain",
       propName: "traincode",
       choosedSel : '#prior_train span.sel-box[name="prior_train-span"]',
-      addEvent: "click",
-      addTriggerSel: "div#yxtraindiv > .quick-box-hd > a#yxtrain_close",
-      removeEvent: "DOMNodeRemoved",
-      removeTriggerSel: "div#prior_train",
-      loadedEvent: "DOMNodeInserted",
-      loadedTriggerSel: "#yxtrain_code",
+      addEventType: "DOMNodeInserted",
+      addEventTarget: "#prior_train",
+      removeEventType: "DOMNodeRemoved",
+      removeEventTarget: "#prior_train",
+      loaded: $("#yxtrain_code > li").length,
+      loadTrigger: $.showYxTrain,
+      loadDone: function () { $("#yxtraindiv").hide(); },
+      loadedEventType: "DOMNodeInserted",
+      loadedEventTarget: "#yxtrain_code",
       delay: 200,
       loadDelay: 1000,
       //restoreFormat: "div#yxtraindiv ul#yxtrain_code > li[%k='%v']",
       restoreFunc: addPriorTrain,
-      chain: [ function(e) { rememberTrainProp(priorFromStationOptions); },
-              function(e) { rememberTrainProp(priorToStationOptions); },
-             ],
     };
     if ($("#yxtrain_code > li").length) {
       log("^_^ prior train already loaded.");
@@ -441,8 +517,8 @@ console.log("++++++ 12306");
       storeName : "advanOpt",
       propName: "id",
       choosedSel : "#ad_setting ~ div > span > input:checked",
-      addEvent: "click",
-      addTriggerSel: "#ad_setting ~ div > span > input",
+      addEventType: "click",
+      addEventTarget: "#ad_setting ~ div > span > input",
       delay: 200,
       restoreFormat: "input#%v",
     };
@@ -452,8 +528,8 @@ console.log("++++++ 12306");
       storeName : "priorType",
       propName: "value",
       choosedSel : "#ad_setting ~ div > span > select > option:checked",
-      addEvent: "click",
-      addTriggerSel: "#ad_setting ~ div > span > select > option",
+      addEventType: "click",
+      addEventTarget: "#ad_setting ~ div > span > select > option",
       delay: 200,
       restoreFormat: "#ad_setting ~ div > span > select > option[%k='%v']",
     };
