@@ -17,7 +17,7 @@
 //    * 自动查询因为超时停止后，自动重新开始
 //    * 自动选择 “显示全部可预订车次”
 //    * 默认发车时间改为 07:00-19:00
-// @author       strongopwh@hotmail.com
+// @author       strongopwh@yandex.com
 // @updateURL  https://raw.githubusercontent.com/strongop/user-scripts/master/12306-bring-me-home.user.js
 // @downloadURL  https://raw.githubusercontent.com/strongop/user-scripts/master/12306-bring-me-home.user.js
 // @supportURL  https://github.com/strongop/user-scripts/issues
