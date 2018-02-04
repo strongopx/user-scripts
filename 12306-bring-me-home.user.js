@@ -2,7 +2,7 @@
 // @name         12306 bring me on the train to home
 // @name:zh-CN         12306带我坐火车回家
 // @namespace    ATGT
-// @version      1.7
+// @version      1.8
 // @description  Please bring me home.
 // Functionality:
 //    * remember almost all options, restore the options after refresh, if login page show, need to refresh again
@@ -17,7 +17,7 @@
 //    * 自动查询因为超时停止后，自动重新开始
 //    * 自动选择 “显示全部可预订车次”
 //    * 默认发车时间改为 07:00-19:00
-// @author       strongopwh@yandex.com
+// @author       strongopwh@hotmail.com
 // @updateURL  https://raw.githubusercontent.com/strongop/user-scripts/master/12306-bring-me-home.user.js
 // @downloadURL  https://raw.githubusercontent.com/strongop/user-scripts/master/12306-bring-me-home.user.js
 // @supportURL  https://github.com/strongop/user-scripts/issues
@@ -61,9 +61,9 @@ console.log("++++++ 12306");
     if (isFirefox) {
       log("Workaround firefox MutationObserver bug.");
       if (options.once)
-        $(targetSel).one(eventType, options, function (e) { handler.call(e.target) });
+        $(targetSel).one(eventType, options, function (e) { handler.call(e.target); });
       else
-        $(targetSel).bind(eventType, options, function (e) { handler.call(e.target) });
+        $(targetSel).bind(eventType, options, function (e) { handler.call(e.target); });
       return;
     }
     var MutationObserver    = window.MutationObserver || window.WebKitMutationObserver;
@@ -534,13 +534,109 @@ console.log("++++++ 12306");
       restoreFormat: "#ad_setting ~ div > span > select > option[%k='%v']",
     };
     rememberTrainProp(priorTypeOptions);
- }
+  }
 
+
+  const DEBUG = 0;
+  const PASS = 1;
+  const INFO = 2;
+  const WARN = 3;
+  const FATAL = 4;
+
+  const uilogColorMap = [
+    "gray",
+    "green",
+    "black",
+    "orange",
+    "red",
+  ];
+
+  function createUILogDiv() {
+    var div = `\
+<div id=ATGT_uilog_div style="position: fixed; bottom: 2px; left: 2px; background-color: #FFFFFFDD; display: none;">
+<a onclick="javascript:$('#ATGT_uilog_div').hide();" href="javascript:" style="float: right;">X</a>
+<ul id=ATGT_uilog_ul>
+<!-- uilog messages here -->
+</ul>
+</div>
+`;
+    $("body").append(div);
+  }
+
+  function uilog(level) {
+    const args = Array.from(arguments).slice(1);
+    var logLi = '<li style="color:'+uilogColorMap[level]+';">' +
+        args.join(' ') +
+        '</li>';
+    $("#ATGT_uilog_ul").append(logLi);
+    log(logLi);
+    if (level > INFO)
+      $("#ATGT_uilog_div").show();
+  }
+
+  function compatCheck() {
+
+    var compatList = {
+      "超时自动重新查询" : [
+        /* [".dhx_modal_cover", 1, "检测'正在查询'", WARN], */
+        [".dhtmlx_winviewport", 1, "检测'正在查询'", WARN],
+        ["#query_ticket", 1, "自动点击'查询按钮'", WARN],
+        [".no-ticket", 5, "检测'查询超时'", WARN],
+      ],
+      "优化乘车选项" : [
+        ["#relogin, #loginForm", 2, "'登录界面'提升", INFO],
+        [".quick-gif, #show_more", 2, "展开'订票助手'", WARN],
+        ["select#cc_start_time, div.pos-top", 2, "自定义时间", WARN],
+        ["input#autoSubmit", 1, "取消'自动提交'", WARN],
+        ["div.sear-result span", 1, "结果提示不遮挡其他选项", WARN],
+        ["input#avail_ticket, label[for='avail_ticket']", 2, "自动选择'显示全部可预订车次'", WARN],
+
+      ],
+      "记住用户选项，以便刷新后恢复" : [
+        ["ul#_ul_station_train_code > li > input, #train_type_btn_all", 7, "记住'车次类型'", WARN],
+        ["ul#from_station_ul, #from_station_name_all", 2, "记住'出发车站'", WARN],
+        ["ul#to_station_ul, #to_station_name_all", 2, "记住'到达车站'", WARN],
+        ["ul#buyer-list, #setion_postion", 2, "记住'乘车人'", WARN],
+        ["#prior_train, #yxtrain_code", 2, "记住'优先车次'", WARN],
+        ["div#sel-seat ul#seat-list, #prior_seat", 2, "记住'优先席别'", WARN],
+        ["#sel-date ul#date-list, #prior_date", 2, "记住'备选日期'", WARN],
+        ["#ad_setting ~ div > span > input", 2, "记住'提交'相关高级设置", WARN],
+        ["#ad_setting ~ div > span > select > option", 2, "记住'选票'相关高级设置", WARN],
+
+        [$.showSelectBuyer, "function", "打开选择'乘车人'对话框", WARN ],
+        [$.closeSelectBuyer, "function", "关闭选择'乘车人'对话框", WARN ],
+        [$.showYxTrain, "function", "打开选择'优先车次'对话框", WARN ],
+      ],
+    };
+
+    function checkOneItem(sel, std, msg, errType) {
+      var r0 = NaN;
+
+      if (typeof sel === "string")
+        r0 = $(sel).length;
+      else if (typeof sel === "function")
+        r0 = typeof sel;
+
+      if (r0 != std)
+        uilog(errType, msg, "将不起作用");
+      else
+        uilog(PASS, msg, "有效");
+    }
+    uilog(INFO, "12306带我回家脚本兼容性检查：");
+    for (var cat of Object.keys(compatList)) {
+      uilog(INFO, "<br /><b>检查", cat, "</b>");
+      for (var item of Array.from(compatList[cat])) {
+        checkOneItem.apply(this, item);
+      }
+    }
+  }
   // Your code here...
 
   //document.addEventListener("DOMContentLoaded", removeAds);
   window.addEventListener("load", removeAds);
   window.addEventListener("load", function () {
+    createUILogDiv();
+    compatCheck();
     reQueryIfTimeout();
     optimizeTravelOptions();
     rememberUserChoice();
