@@ -12,6 +12,7 @@
 //		3. Modify the handlers' memebers
 // @description:zh-CN 	解除各种网页限制。网页列表，请查看源代码。
 // @version  1.3.1
+// @author StrongOp
 // @updateURL  https://raw.githubusercontent.com/strongop/user-scripts/master/remove-page-limit.user.js
 // @supportURL  https://github.com/strongop/user-scripts/issues
 // @include    http*://*quora.com/*
