@@ -5,6 +5,7 @@
 // @description Select any word in any web to show it's definition from Bing Dict.
 // @description:zh-CN 划词翻译，使用必应词典
 // @version  1.3.3.1
+// @author StrongOp
 // @updateURL  https://raw.githubusercontent.com/strongop/user-scripts/master/bing-dict.user.js
 // @supportURL  https://github.com/strongop/user-scripts/issues
 // @match    http://*/*
