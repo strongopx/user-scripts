@@ -2,7 +2,7 @@
 // @name         12306 bring me on the train to home
 // @name:zh-CN         12306带我坐火车回家
 // @namespace    ATGT
-// @version      1.8
+// @version      1.9
 // @description  Please bring me home.
 // Functionality:
 //    * remember almost all options, restore the options after refresh, if login page show, need to refresh again
@@ -18,18 +18,17 @@
 //    * 自动选择 “显示全部可预订车次”
 //    * 默认发车时间改为 07:00-19:00
 // @author       StrongOp
-// @updateURL  https://raw.githubusercontent.com/strongop/user-scripts/master/12306-bring-me-home.user.js
-// @downloadURL  https://raw.githubusercontent.com/strongop/user-scripts/master/12306-bring-me-home.user.js
+// @homepageURL  https://github.com/strongop/user-scripts/
 // @supportURL  https://github.com/strongop/user-scripts/issues
 // @match        https://kyfw.12306.cn/otn/leftTicket/*
 // @icon         https://kyfw.12306.cn/otn/resources/images/ots/favicon.ico
-// @grant        GM_setValue
-// @grant        GM_getValue
+// @-grant        GM_setValue
+// @-grant        GM_getValue
 // @run-at       document-start
 // ==/UserScript==
 
 console.log("++++++ 12306");
-(function() {
+var mainFunc = function() {
   'use strict';
 
   var log = console.log;
@@ -38,6 +37,12 @@ console.log("++++++ 12306");
   }
   function logDate() {
     log(date());
+  }
+  function GM_setValue(k, v) {
+    localStorage.setItem(k, v);
+  }
+  function GM_getValue(k, v) {
+    return localStorage.getItem(k);
   }
   var isFirefox = navigator.userAgent.indexOf("Firefox") >= 0;
 
@@ -641,5 +646,15 @@ console.log("++++++ 12306");
     optimizeTravelOptions();
     rememberUserChoice();
   });
-})();
+};
+
+function runOnPage(func) {
+  var script = document.createElement('script');
+  //script.appendChild(document.createTextNode('('+ func +')();'));
+  script.appendChild(document.createTextNode('(function (){'+'('+ func +')();'+'})();'));
+  (document.body || document.head || document.documentElement).appendChild(script);
+}
+
+runOnPage(mainFunc);
+
 console.log("------ 12306");
