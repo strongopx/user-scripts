@@ -11,15 +11,14 @@
 //		2. Add you handlers to variable `pageHandlers' below
 //		3. Modify the handlers' memebers
 // @description:zh-CN 	解除各种网页限制。网页列表，请查看源代码。
-// @version  1.3.1
-// @author StrongOp
-// @updateURL  https://raw.githubusercontent.com/strongop/user-scripts/master/remove-page-limit.user.js
-// @supportURL  https://github.com/strongop/user-scripts/issues
+// @version  1.3.2
 // @include    http*://*quora.com/*
 // @include    http*://*360doc.com/*
 // @include    http*://*baidu.com/*
 // @include    http*://*z3z4.com/*
+// @include    http*://*sdifen.com/*
 // @run-at   document-start
+// @downloadURL none
 // ==/UserScript==
 
 /*
@@ -59,6 +58,11 @@ console.log("!!!!!!!!!!!!!!!!!!!!!unlock-page!!!!!!!!!!!!!!!!!!!!!!!!");
     [/z3z4\.com/, [
       [, , interceptJackEvent, 0],
       [, "DOMContentLoaded", enableUserSelect, 0, "body"],]
+    ],
+    [/sdifen\.com/, [
+      [, , interceptJackEvent, 0],
+      [, "DOMContentLoaded", enableUserSelect, 0, "body"],
+      [window, "load", enableCopyHandler, 0],]
     ],
   ];
   
@@ -112,7 +116,7 @@ console.log("!!!!!!!!!!!!!!!!!!!!!unlock-page!!!!!!!!!!!!!!!!!!!!!!!!");
   
   function interceptJackEvent() {
     var f = function setEventFilter() {
-      var eventFilter = /copy|selectstart|mouseup|contextmenu|keydown|keyup/;
+      var eventFilter = /copy|selectstart|mouseup|mousedown|contextmenu|keydown|keyup/;
       window.ATGT_eventFilter = eventFilter;
     }
     injectFunction(f);
@@ -148,9 +152,9 @@ console.log("!!!!!!!!!!!!!!!!!!!!!unlock-page!!!!!!!!!!!!!!!!!!!!!!!!");
     var doc = document;
     console.log(new Date().toLocaleString(), " ", arguments.callee.name, body.oncopy, doc.oncopy);
     body.onclick = body.oncontextmenu = body.oncopy =
-      body.onmouseup = body.onselectstart = null;
+      body.onmouseup = body.onmousedown = body.onselectstart = null;
     doc.onclick = doc.oncontextmenu = doc.oncopy =
-      doc.onmouseup = doc.onselectstart = null;
+      doc.onmouseup = doc.onmousedown = doc.onselectstart = null;
   }
 
   function waitForNode(targetSel, nodeFilter, nodeHandler, attrHandler) {
