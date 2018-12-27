@@ -4,14 +4,14 @@
 // @name:zh-CN     必应词典
 // @description Select any word in any web to show it's definition from Bing Dict.
 // @description:zh-CN 划词翻译，使用必应词典
-// @version  1.3.3.1
+// @version  1.3.5
 // @author StrongOp
-// @updateURL  https://raw.githubusercontent.com/strongop/user-scripts/master/bing-dict.user.js
 // @supportURL  https://github.com/strongop/user-scripts/issues
 // @match    http://*/*
 // @match    https://*/*
 // -match    https://github.com/*
 // @grant    GM.xmlHttpRequest
+// @grant    GM_xmlhttpRequest
 // @connect  www.bing.com
 // @icon     https://www.bing.com/favicon.ico
 // @run-at   document-end
@@ -19,6 +19,10 @@
 
 /*
 Change Log:
+v1.3.5:
+		21 Dec 2018, Fix GM_xmlhttpRequest not def in Greasemonkey, GM not define in Tampermonkey
+v1.3.4:
+    28 Nov 2018, Fix GM.xmlHttpRequest not def in chrome.
 v1.3.3:
 	28 Jan 2018, Fix dict provider overlap with result.
   			Add test cases.
@@ -330,7 +334,7 @@ div#ATGT-bing-dict-result-wrapper ul li span {
     console.log(url);
     setResult("Searching <a href='" + url + "'>" +  escapeHtml(word) + "</a>");
     
-    GM.xmlHttpRequest({
+    (typeof GM_xmlhttpRequest != "undefined" && GM_xmlhttpRequest || GM.xmlHttpRequest)({
       url : url,
       method : "GET",
       onload : (response) => parseDictResult(word, response),
