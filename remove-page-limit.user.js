@@ -11,18 +11,19 @@
 //		2. Add you handlers to variable `pageHandlers' below
 //		3. Modify the handlers' memebers
 // @description:zh-CN 	解除各种网页限制。网页列表，请查看源代码。
-// @version  1.3.2
+// @version  1.4.1
 // @include    http*://*quora.com/*
 // @include    http*://*360doc.com/*
 // @include    http*://*baidu.com/*
 // @include    http*://*z3z4.com/*
 // @include    http*://*sdifen.com/*
 // @run-at   document-start
-// @downloadURL none
 // ==/UserScript==
 
 /*
 ChangeLog:
+v1.4:
+	27 Nov 2018, Add wenku.baidu.com
 v1.3:
 	29 Jan 2018, Added generic functions:
   							1. Intercept event handlers.
@@ -42,18 +43,24 @@ console.log("!!!!!!!!!!!!!!!!!!!!!unlock-page!!!!!!!!!!!!!!!!!!!!!!!!");
     /* format:
      *		[ /regex/, [ selector-string or node-object, event-type, event-handler, delay-ms, event-handler-parameter ] ]
      *	-- or --
-     *		[ /regex/, [ selector-string or node-object, event-type, event-handler, observed-object, observer-wait-for-this-selector-string ] ]
+     *		[ /regex/, [ selector-string or node-object, event-type, event-handler, observed-object, event-handler-parameter ] ]
      *	-- or --
      *		[ /regex/, [
-     *				[ selector-string or node-object, event-type, event-handler, delay or observed-object, ... ],
-     *				[ selector-string or node-object, event-type, event-handler, delay or observed-object, ... ], ]
+     *				[ selector-string or node-object, event-type, event-handler, delay or observed-object, event-handler-parameter ],
+     *				[ selector-string or node-object, event-type, event-handler, delay or observed-object, event-handler-parameter ], ]
      *		]
      */
     [/quora\.com/, [, "DOMContentLoaded", quoraHandler, 0]],
     [/360doc\.com/, [window, "load", enableCopyHandler, 0]],
+    [/wenku\.baidu\.com/, [
+        [, , interceptJackEvent, 0 ],
+        [window, "load", enableCopyHandler, 0, ".bd.doc-reader"],
+      ]
+    ],
     [/baidu\.com/, [
-      [, "DOMContentLoaded", enableUserSelect, 0, ".op_new_cal_screen"],
-      ["#form", "submit", enableUserSelect, "body", ".op_new_cal_screen"],]
+        [, "DOMContentLoaded", enableUserSelect, 0, ".op_new_cal_screen"],
+        ["#form", "submit", enableUserSelect, "body", ".op_new_cal_screen"],
+      ]
     ],
     [/z3z4\.com/, [
       [, , interceptJackEvent, 0],
@@ -137,7 +144,7 @@ console.log("!!!!!!!!!!!!!!!!!!!!!unlock-page!!!!!!!!!!!!!!!!!!!!!!!!");
                     ];
     for (var usel of uselattrs) {
       try {
-        if (usel in b.style) {
+        if (b && usel in b.style) {
           console.log("Found style user-select: "+b.style[usel]+", replace it.");
           b.style[usel] = "text";
         }
@@ -147,14 +154,20 @@ console.log("!!!!!!!!!!!!!!!!!!!!!unlock-page!!!!!!!!!!!!!!!!!!!!!!!!");
     }
   }
 
-  function enableCopyHandler() {
+  function enableCopyHandler(sel) {
     var body = document.body;
     var doc = document;
     console.log(new Date().toLocaleString(), " ", arguments.callee.name, body.oncopy, doc.oncopy);
-    body.onclick = body.oncontextmenu = body.oncopy =
-      body.onmouseup = body.onmousedown = body.onselectstart = null;
-    doc.onclick = doc.oncontextmenu = doc.oncopy =
-      doc.onmouseup = doc.onmousedown = doc.onselectstart = null;
+    function replaceUserHandlers(n) {
+      n.onclick = n.oncontextmenu = n.oncopy =
+      	n.onmouseup = n.onmousedown = n.onselectstart = null;
+    }
+    replaceUserHandlers(body);
+    replaceUserHandlers(doc);
+    var node = document.querySelector(sel);
+    //for (var n of nodes)
+    console.log(sel, "=>", node);
+      replaceUserHandlers(node);
   }
 
   function waitForNode(targetSel, nodeFilter, nodeHandler, attrHandler) {
@@ -224,10 +237,11 @@ console.log("!!!!!!!!!!!!!!!!!!!!!unlock-page!!!!!!!!!!!!!!!!!!!!!!!!");
         node = nodeSel;
       else if (typeof nodeSel === "string")
         node = document.querySelector(nodeSel);
+      console.info("nodeSel", nodeSel, "node", node);
       if (evt)
-      	node.addEventListener(evt, handler);
+      	node && node.addEventListener(evt, ()=>{handler(param);});
       else
-        handler();
+        handler(param);
     } catch (e) {
       console.log("Error handling ", url, " ", e);
     }
@@ -237,10 +251,19 @@ console.log("!!!!!!!!!!!!!!!!!!!!!unlock-page!!!!!!!!!!!!!!!!!!!!!!!!");
     var url = ph[0];
     if (url.test(location.href)) {
       var info_list = ph[1];
-      if (!(info_list[0] instanceof Array))
-        runHandler(url, info_list);
-      else for (var info of info_list)
-        runHandler(url, info);
+      if (!(info_list[0] instanceof Array)) {
+        try {
+          runHandler(url, info_list);
+        } catch(e) {
+          console.log(e);
+        }
+      } else for (var info of info_list) {
+        try {
+          runHandler(url, info);
+        } catch(e) {
+          console.log(e);
+        }
+      }
     }
   }
 })();
