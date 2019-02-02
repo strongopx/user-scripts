@@ -4,7 +4,7 @@
 // @name:zh-CN	 	必应词典，带英语发音
 // @description		Translate selected words by Bing Dict(Dictionary support EN to CN, CN to EN), with EN pronunciation, with CN pinyin, translation is disabled by default, check the 'Bing Dict' at bottom left to enable tranlation.
 // @description:zh-CN	划词翻译，使用必应词典(支持英汉、汉英)，带英语发音，带中文拼音，默认不开启翻译，勾选左下角的'Bing Dict'开启翻译。
-// @version		1.4.5
+// @version		1.4.6
 // @author		StrongOp
 // @supportURL	https://github.com/strongop/user-scripts/issues
 // @match	http://*/*
@@ -77,7 +77,15 @@ const DICT_RESULT_CSS = `
 		font-weight: normal;
 		white-space: normal;
 	}
-
+	div#${dict_result_id}-reset a,
+	div#${dict_result_id}-reset span,
+	div#${dict_result_id}-reset audio,
+	div#${dict_result_id}-reset input,
+	div#${dict_result_id}-reset label,
+	div#${dict_result_id}-reset img
+	{
+		display: inline-block;
+	}
 	div#${dict_result_id} {
 		display: block;
 		position: fixed;
@@ -100,7 +108,6 @@ const DICT_RESULT_CSS = `
 		*/
 	}
 	div#${dict_result_id} .dict-provider * {
-		display: inline;
 		font-size: xx-small;
 	}
 	div#${dict_result_id} .dict-provider input {
@@ -109,8 +116,8 @@ const DICT_RESULT_CSS = `
 		border: solid 1px;
 		-webkit-appearance: checkbox;
 	}
-	div#${dict_result_id} .search_suggest_area {
-		font-size: xx-small;
+	div#${dict_result_id} .search_suggest_area ul li * {
+		font-size: x-small;
 	}
 	div#${dict_result_id} .error {
 		color: red;
@@ -127,6 +134,7 @@ const DICT_RESULT_CSS = `
 		margin-right: 5px;
 	}
 	div#${dict_result_id} .mach_trans {
+		display: inline-block;
 		font-style: italic;
 		font-size: x-small;
 	}
@@ -146,7 +154,6 @@ const DICT_RESULT_CSS = `
 	}
 	div#${dict_result_id} .pronuce * {
 		color: gray;
-		display: inline;
 	}
 	div#${dict_result_id} .pronuce a:hover {
 		color: white;
@@ -404,16 +411,18 @@ class BingDictProvider extends DictProvider {
 			}
 		}
 
-		function parseBingDymArea(dym) {
-			let suggest = escapeHtml(dym.querySelector('.df_wb_a').innerText);
+		function parseSearchSuggestDetail(detail) {
+			let suggest = escapeHtml(detail.querySelector('.df_wb_a').innerText);
 			suggest = `<div class='div_title'>${suggest}</div>`;
 			let defs = '<ul>';
-			for (let s of dym.querySelectorAll('.df_wb_c')) {
+			for (let s of detail.querySelectorAll('.df_wb_c')) {
 				let r0 = s.childNodes[0];
 				let r1 = s.childNodes[1];
 				defs += `<li>
 					<a class='suggest_word' href='//www.bing.com${r0.pathname}${r0.search}'>` +
-					`${escapeHtml(r0.innerText)}</a>${escapeHtml(r1.innerText)}</li>`;
+					`${escapeHtml(r0.innerText)}</a>
+					<span>${escapeHtml(r1.innerText)}<span>
+					</li>`;
 			}
 			defs += '</ul>';
 			return suggest + defs;
@@ -427,8 +436,8 @@ class BingDictProvider extends DictProvider {
 			headword = `<div class='headword'><a href='${url}'>${headword}</a></div>`;
 			suggest = `<div class='div_title'>${suggest}</div>`;
 			let defs = '';
-			for (let dym of trans_area.querySelectorAll('.dym_area')) {
-				defs += parseBingDymArea(dym);
+			for (let detail of trans_area.querySelectorAll('.dym_area')) {
+				defs += parseSearchSuggestDetail(detail);
 			}
 
 			return `<div class='search_suggest_area'>${headword}${suggest}${defs}</div>`;
@@ -493,7 +502,7 @@ class BingDictProvider extends DictProvider {
 			}
 			let url = 'http://www.bing.com/dict/search?q=' + encodeURIComponent(word);
 			console.log(url);
-			self.resultView.setResult(`Searching <a href='${url}' target='_blank'>${escapeHtml(word)}</a>`);
+			self.resultView.setResult(`Searching <span class='headword'><a href='${url}' target='_blank'>${escapeHtml(word)}</a></span>`);
 
 			(typeof GM_xmlhttpRequest != 'undefined' && GM_xmlhttpRequest || GM.xmlHttpRequest)({
 				url: url,
@@ -589,16 +598,14 @@ function dictTest() {
 		setTimeout(bingDict.search.bind(bingDict), (i + 1) * 3000, testWords[i]);
 	}
 	dictResultView.setResult(
-		`<code>
-		<pre>
+		`<pre>
 		/*TODO:
 		* 1. Translation enable/disable test.
 		* 2. Audio/voice test.
 		* 3. Click on headword to open new tab of dict.bing.com
 		* 4. Select word on result view to translate
 		*/
-		</pre>
-		</code>`);
+		</pre>`);
 }
 //dictTest();
 
