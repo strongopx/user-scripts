@@ -4,7 +4,7 @@
 // @name:zh-CN	 	必应词典，带英语发音
 // @description		Translate selected words by Bing Dict(Dictionary support EN to CN, CN to EN), with EN pronunciation, with CN pinyin, translation is disabled by default, check the 'Bing Dict' at bottom left to enable tranlation.
 // @description:zh-CN	划词翻译，使用必应词典(支持英汉、汉英)，带英语发音，带中文拼音，默认不开启翻译，勾选左下角的'Bing Dict'开启翻译。
-// @version		1.4.6
+// @version		1.4.7
 // @author		StrongOp
 // @supportURL	https://github.com/strongop/user-scripts/issues
 // @match	http://*/*
@@ -77,14 +77,17 @@ const DICT_RESULT_CSS = `
 		font-weight: normal;
 		white-space: normal;
 	}
-	div#${dict_result_id}-reset a,
-	div#${dict_result_id}-reset span,
 	div#${dict_result_id}-reset audio,
+	div#${dict_result_id}-reset img,
 	div#${dict_result_id}-reset input,
-	div#${dict_result_id}-reset label,
-	div#${dict_result_id}-reset img
+	div#${dict_result_id}-reset label
 	{
 		display: inline-block;
+	}
+	div#${dict_result_id}-reset a,
+	div#${dict_result_id}-reset span
+	{
+		display: inline;
 	}
 	div#${dict_result_id} {
 		display: block;
@@ -122,8 +125,10 @@ const DICT_RESULT_CSS = `
 	div#${dict_result_id} .error {
 		color: red;
 	}
-	div#${dict_result_id} .headword a{
+	div#${dict_result_id} .headword {
 		display: inline-block;
+	}
+	div#${dict_result_id} .headword a{
 		font-weight: bold;
 		font-size: medium;
 	}
@@ -586,6 +591,7 @@ function dictTest() {
 	let testWords = [
 		'tunnel',
 		'hello', // word definition
+		'browsing experience', // long sentense
 		'你好',
 		'hello, this is world', //machine translation
 		'ndalo', // ambigous
