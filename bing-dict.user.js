@@ -4,28 +4,40 @@
 // @name:zh-CN     必应词典
 // @description Select any word in any web to show it's definition from Bing Dict.
 // @description:zh-CN 划词翻译，使用必应词典
-// @version  1.3.5
+// @version  1.4.1
 // @author StrongOp
 // @supportURL  https://github.com/strongop/user-scripts/issues
 // @match    http://*/*
 // @match    https://*/*
 // -match    https://github.com/*
+// @require  https://raw.githubusercontent.com/strongop/user-scripts/master/gm4-polyfill.js
 // @grant    GM.xmlHttpRequest
 // @grant    GM_xmlhttpRequest
+// @grant    GM.setValue
+// @grant    GM.getValue
+// @grant    GM_setValue
+// @grant    GM_getValue
 // @connect  www.bing.com
 // @icon     https://www.bing.com/favicon.ico
 // @run-at   document-end
 // ==/UserScript==
 
+/* eslint: */
+/* global GM GM_xmlhttpRequest GM_setValue GM_getValue */
+
 /*
 Change Log:
+v1.4.1:
+    31 Jan 2019, Refactor with class, Add audio support.
+v1.3.8:
+	30 Jan 2019, Need user click on checkbox to enable translate.
 v1.3.5:
-		21 Dec 2018, Fix GM_xmlhttpRequest not def in Greasemonkey, GM not define in Tampermonkey
+	21 Dec 2018, Fix GM_xmlhttpRequest not def in Greasemonkey, GM not define in Tampermonkey
 v1.3.4:
     28 Nov 2018, Fix GM.xmlHttpRequest not def in chrome.
 v1.3.3:
 	28 Jan 2018, Fix dict provider overlap with result.
-  			Add test cases.
+  	    		 Add test cases.
 v1.3.2:
 	27 Jan 2018, Add dict provider name: Bing Dict.
 v1.3.1:
@@ -40,335 +52,506 @@ v1.0:
 	12 Jan 2018, Initial version.
 */
 
-console.log("!!!!!!!!!!!!!!!!!!!!!bing-dict!!!!!!!!!!!!!!!!!!!!!!!!");
-(function () {
-  (function addStyleSheet() {
-    var style = document.createElement("STYLE");
-    style.type = "text/css";
-    var css = `
-div#ATGT-bing-dict-result-wrapper-reset {
-  all: initial;
-  * {
-  	all: initial;
-  }
-}
-div#ATGT-bing-dict-result-wrapper {
-  display: block;
-  position: fixed;
-  left: 2px;
-  bottom: 2px;
-	max-width: 32%;
-	z-index: 2100000000;
-	padding: 0;
-	margin: 0;
-  color: black;
-  background-color: rgba(255,255,255,0.9);
-	font-size: small;
-	font-family: sans-serif;
-	white-space: normal;
-}
-div#ATGT-bing-dict-result-wrapper .dict-provider {
-	font-size: xx-small;
-	float: right;
-	margin-left: 0.5rem;
 /*
-	position: absolute;
-  top: 2px;
-  right: 2px;
+if (typeof GM_xmlhttpRequest !== 'undefined')
+    var GM = {
+        setValue: GM_setValue,
+        getValue: GM_getValue
+    };
 */
-}
-div#ATGT-bing-dict-result-wrapper .search_suggest_area {
-	font-size: xx-small;
-}
-div#ATGT-bing-dict-result-wrapper .error {
-	color: red;
-}
-div#ATGT-bing-dict-result-wrapper .headword {
-	font-weight: bold;
-	font-size: medium;
-}
-div#ATGT-bing-dict-result-wrapper .div_title {
-	font-weight: bold;
-}
-div#ATGT-bing-dict-result-wrapper .suggest_word {
-	margin-right: 5px;
-}
-div#ATGT-bing-dict-result-wrapper .mach_trans {
-	font-style: italic; 
-	font-size: x-small;
-}
-div#ATGT-bing-dict-result-wrapper a:link {
-	color: #37a;
-	text-decoration: none;
-}
-div#ATGT-bing-dict-result-wrapper a:hover {
-	color: white;
-	background-color: #37a;
-}
-div#ATGT-bing-dict-result-wrapper .pronuce {
-	color: gray;
-}
-div#ATGT-bing-dict-result-wrapper .mach_trans_result {
-	color: gray;
-}
-div#ATGT-bing-dict-result-wrapper ul {
-	list-style-type: none;
-	padding: 1px;
-	margin: 0px;
-}
-div#ATGT-bing-dict-result-wrapper ul li{
-	margin-top: 1px;
-}
-div#ATGT-bing-dict-result-wrapper ul li span {
-  float:left;
-	color: white;
-  background-color: gray;
-  text-align: center;
-  padding: 0 2px;
-  margin-right: 3px;
-}
-
+console.log('!!!!!!!!!!!!!!!!!!!!!bing-dict!!!!!!!!!!!!!!!!!!!!!!!!');
+const DICT_RESULT_CSS = `
+    div#ATGT-bing-dict-result-wrapper-reset {
+        all: initial;
+        * {
+            all: initial;
+        }
+    }
+    div#ATGT-bing-dict-result-wrapper {
+        all: initial;
+        div, img, a, input, span, ul, li {
+            all: initial;
+        }
+    }
+    div#ATGT-bing-dict-result-wrapper {
+        display: block;
+        position: fixed;
+        left: 2px;
+        bottom: 2px;
+        max-width: 32%;
+        z-index: 2100000000;
+        padding: 0;
+        margin: 0;
+        color: black;
+        background-color: rgba(255,255,255,0.9);
+        font-size: small;
+        font-family: sans-serif;
+        white-space: normal;
+    }
+    div#ATGT-bing-dict-result-wrapper .dict-provider {
+        font-size: xx-small;
+        float: right;
+        margin-left: 0.5rem;
+        /*
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        */
+    }
+    div#ATGT-bing-dict-result-wrapper .dict-provider input {
+        display: inline;
+        vertical-align: bottom;
+        transform: scale(0.7);
+        margin: 0 0;
+        border: solid 1px;
+        -webkit-appearance: checkbox;
+    }
+    div#ATGT-bing-dict-result-wrapper .search_suggest_area {
+        font-size: xx-small;
+    }
+    div#ATGT-bing-dict-result-wrapper .error {
+        color: red;
+    }
+    div#ATGT-bing-dict-result-wrapper .headword {
+        color: #37a;
+        font-weight: bold;
+        font-size: medium;
+    }
+    div#ATGT-bing-dict-result-wrapper .div_title {
+        font-weight: bold;
+    }
+    div#ATGT-bing-dict-result-wrapper .suggest_word {
+        margin-right: 5px;
+    }
+    div#ATGT-bing-dict-result-wrapper .mach_trans {
+        font-style: italic;
+        font-size: x-small;
+    }
+    div#ATGT-bing-dict-result-wrapper a:link {
+        color: #37a;
+        text-decoration: none;
+    }
+    div#ATGT-bing-dict-result-wrapper a:hover {
+        color: white;
+        background-color: #37a;
+    }
+    div#ATGT-bing-dict-result-wrapper a:visited {
+        color: #37a;
+    }
+    div#ATGT-bing-dict-result-wrapper .pronuce {
+        color: gray;
+    }
+    div#ATGT-bing-dict-result-wrapper .pronuce audio {
+        display: inline;
+    }
+    div#ATGT-bing-dict-result-wrapper .pronuce a {
+        width: initial;
+        height: initial;
+    }
+    div#ATGT-bing-dict-result-wrapper .pronuce a:hover {
+        color: white;
+        background-color: white;
+    }
+    div#ATGT-bing-dict-result-wrapper .mach_trans_result {
+        color: gray;
+    }
+    div#ATGT-bing-dict-result-wrapper ul {
+        list-style-type: none;
+        padding: 1px;
+        margin: 0px;
+    }
+    div#ATGT-bing-dict-result-wrapper ul li{
+        margin-top: 1px;
+    }
+    div#ATGT-bing-dict-result-wrapper ul li span {
+        float:left;
+        color: white;
+        background-color: gray;
+        text-align: center;
+        padding: 0 2px;
+        margin-right: 3px;
+    }
+	div#ATGT-bing-dict-result-wrapper a img.audioPlayer:hover {
+		opacity: 0.8;
+	}
+	div#ATGT-bing-dict-result-wrapper img.audioPlayer {
+		width: 1em;
+		height: 1em;
+	}
 `;
-    style.appendChild(document.createTextNode(css));
-    document.head.appendChild(style);
-  })();
-  
-  var dictResultDiv = (function createDictResultDiv() {
-    var div_wrapper_reset = document.createElement("DIV");
-    div_wrapper_reset.id = "ATGT-bing-dict-result-wrapper-reset";
-    var div = document.createElement("DIV");
-    div.id = "ATGT-bing-dict-result-wrapper";
-    div_wrapper_reset.appendChild(div);
-    document.body.appendChild(div_wrapper_reset);
-    return div;
-  })();
-  
-  function setResult(defs) {
-    dictResultDiv.innerHTML = defs;
-  }
 
-  var dictCache = {};
-  var lastSearchWord = "";
-  var entityMap = {
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;',
-    '/': '&#x2F;',
-    '`': '&#x60;',
-    '=': '&#x3D;'
-  };
+class DictResultView {
+	//dictResultDiv;
+	constructor(prefs) {
+		this.prefs = prefs;
+		this.addStyleSheet();
+		this.createDictResultDiv();
+		this.transEnableShown = false;
+	}
 
-  function escapeHtml (string) {
-    return String(string).replace(/[&<>"'`=\/]/g, function (s) {
-      return entityMap[s];
-    });
-  }
-  
-  var dictProvider = '<div class=dict-provider>Bing Dict</div>';
-  
-  function parseDefinition(page, url) {
-    //console.log("parseDefinition");
-    var qdef = page.querySelector(".qdef");
-    //console.log("qdef ", qdef);
-    var hd_area = qdef.childNodes[0];
-    try {
-      var headword = escapeHtml(hd_area.querySelector("#headword").innerText);
-    } catch (e) {
-      var headword = "";
-    }
-    
-    var hd_pr = "";
-    try { /* en to cn */
-    	hd_pr = escapeHtml(hd_area.querySelector(".hd_prUS").innerText) 
-      				+ "&emsp;" + escapeHtml(hd_area.querySelector(".hd_pr").innerText);
-    } catch (e) {
-    }
-    try {
-      if (!hd_pr) /* cn to en */
-        hd_pr = escapeHtml(hd_area.querySelector(".hd_tf_lh").innerText);
-    } catch (e) {
-    }
-    
-    headword = "<div class='headword'>"
-      + "<a href='"+url+"' target='_blank'>" + headword + "</a>"
-      + "</div>";
-    hd_pr = "<div class='pronuce'>" + hd_pr + "</div>";
-    
-    try {
-      var def_area = qdef.childNodes[1];
-      var def_list = def_area.querySelectorAll("li");
-      var defs = "<ul>";
-      for (var def of def_list) {
-        defs += "<li><span>" + escapeHtml(def.childNodes[0].innerText) + "</span>"
-          					+ escapeHtml(def.childNodes[1].innerText) + "</li>";
-      }
-      defs += "</ul>";
-    } catch (e) {
-      var defs = "";
-    }
+	addStyleSheet() {
+		let style = document.createElement('STYLE');
+		style.type = 'text/css';
+		style.appendChild(document.createTextNode(DICT_RESULT_CSS));
+		document.head.appendChild(style);
+	}
+	createDictResultDiv() {
+		this.addStyleSheet();
+		let div_wrapper_reset = document.createElement('DIV');
+		div_wrapper_reset.id = 'ATGT-bing-dict-result-wrapper-reset';
+		let div = document.createElement('DIV');
+		div.id = 'ATGT-bing-dict-result-wrapper';
+		div_wrapper_reset.appendChild(div);
+		document.body.appendChild(div_wrapper_reset);
+		this.dictResultDiv = div;
+	}
 
-    return headword + hd_pr  + defs;
-  }
-  
-  function parseMachTrans(page, url) {
-    //console.log("parseMachTrans");
-    var trans_area = page.querySelector(".lf_area");
-    try {
-    	var smt_hw_elem = trans_area.querySelector(".smt_hw");
-      var smt_hw = escapeHtml(smt_hw_elem.innerText);
-    	var headword_elem = smt_hw_elem.nextElementSibling;
-      var headword = escapeHtml(headword_elem.innerText);
-    	var trans_result_elem = headword_elem.nextElementSibling;
-      var trans_result = escapeHtml(trans_result_elem.innerText);
-    } catch (e) {
-    }
+	setProvider(provider) {
+		this.dictProvider = provider;
+	}
 
-    smt_hw = "<div class='mach_trans'>" + smt_hw + "</div>";
-    headword = "<div class='headsentence'>"
-      +"<a href='"+url+"' target='_blank'>" + headword + "</a>"
-      +"</div>";
-    trans_result = "<div class='mach_trans_result'>" + trans_result + "</div>";
-    
-    return smt_hw + headword + trans_result;
-  }
-  
-  function parseBingDymArea(dym) {
-    var suggest = escapeHtml(dym.querySelector(".df_wb_a").innerText);
-    suggest = "<div class='div_title'>"+suggest+"</div>";
-    var defs = "<ul>";
-    for (var s of dym.querySelectorAll(".df_wb_c")) {
-      var r0 = s.childNodes[0];
-      var r1 = s.childNodes[1];
-      defs += "<li><a class='suggest_word' href='" 
-        		+ "//www.bing.com" + r0.pathname + r0.search + "'>" 
-        		+ escapeHtml(r0.innerText) + "</a>"
-      			+ escapeHtml(r1.innerText) + "</li>";
-    }
-    defs += "</ul>";
-    return suggest + defs;
-  }
-  
-  function parseSearchSuggest(page, url) {
-    //console.log("parseSearchSuggest");
-    var trans_area = page.querySelector(".lf_area");
-    var headword = escapeHtml(trans_area.querySelector(".dym_p").innerText);
-    var suggest = escapeHtml(trans_area.querySelector(".p2-2").innerText);
-    headword = "<div class='headword'><a href='" + url + "'>" + headword + "</a></div>";
-    suggest = "<div class='div_title'>" + suggest + "</div>";
-    var defs = "";
-    for (var dym of trans_area.querySelectorAll(".dym_area")) {
-      defs += parseBingDymArea(dym);
-    }
-    
-    return "<div class='search_suggest_area'>" + headword +  suggest + defs + "</div>";
-  }
+	setResult(defs) {
+		this.dictResultDiv.innerHTML = this.dictProvider + defs;
+		this.dictResultDiv.style.display = 'block';
+		this.showEnableTransChoice();
+	}
+	hideResult() {
+		this.dictResultDiv.style.display = 'none';
+		this.transEnableShown = false;
+	}
 
-  function parseDictResultDom(page, url) {
-    //console.log("page ", page);
-    var qdef = page.querySelector(".qdef");
-    var smt_hw = page.querySelector(".smt_hw");
-    var search_suggest = page.querySelector(".dym_area") && page.querySelector(".df_wb_c");
-    //var no_result = page.querySelector(".no_results");
-    if (qdef)
-      return parseDefinition(page, url);
-		else if (smt_hw)
-      return parseMachTrans(page, url);
-    else if (search_suggest)
-      return parseSearchSuggest(page, url);
-    else
-      return "";
-  }
-  
-  const fallback_message = "No result.<br />Try <a href='https://www.bing.com/translator' target=_blank>Microsoft Translator</a>.";
+	mouseEventInView(event) {
+		// if Mouse is inside result element
+		let divRect = this.dictResultDiv.getBoundingClientRect();
+		let isInView = (event.clientX >= divRect.left && event.clientX <= divRect.right &&
+			event.clientY >= divRect.top && event.clientY <= divRect.bottom);
+		if (isInView)
+			console.log('mouse in result area');
+		return isInView;
+	}
 
-  function parseDictResult(word, response) {
-    //console.log("search dict ok", response);
-    var url = response.finalUrl;
-    try {
-      var parser = new DOMParser();
-      var doc = parser.parseFromString(response.responseText, "text/html");
-      var defs = parseDictResultDom(doc, url);
-      if (!defs)
-        defs = fallback_message;
-      defs = dictProvider + defs;
-      dictCache[word] = defs;
-    } catch (e){
-      console.log("parseDictResult failed:\n " +  e.stack);
-      var defs = "<span class='error'>Error</span> parsing result of <a href='" + url + "'>" 
-        		+ escapeHtml(word) + "</a>, <br />" + fallback_message;
-    }
-    
-    setResult(defs);
-  }
-  
-  function searchDictFail(word, response) {
-    //console.log("search dict fail ", response);
-    var url = response.finalUrl;
-    var status = (response.status ? response.status : "")
-    							+ " " + (response.statusText ? response.statusText : "");
-    setResult("<span class='error'>Error</span> searching <a href='" + url + "'>" +  escapeHtml(word) + "</a>, "
-              + status + "<br />"
-              + fallback_message);
-  }
+	showEnableTransChoice() {
+		this.transEnableShown = true;
+		let prefs = this.prefs;
+		let view = this;
+		function enableTransChoiceHandler(event) {
+			console.log('enableTransChoiceHandler called, translate enable ', event.target.checked);
+			prefs.updateTransEnabledList(location.host, !!event.target.checked);
+			prefs.transEnabledOnPage = event.target.checked;
+			if (prefs.transEnabledOnPage && CurrentSelWord.length > 0)
+				setTimeout(bingDict.search.bind(bingDict), 0, CurrentSelWord);
+			else
+				view.hideResult();
+		}
+		let enableCheckbox = document.querySelector('div#ATGT-bing-dict-result-wrapper input#enableTrans');
+		enableCheckbox.checked = this.prefs.transEnabledOnPage;
+		enableCheckbox.onclick = enableTransChoiceHandler;
+	}
 
-  function searchBingDict(word) {
-    word = word.replace(/^\s*|\s*$/g, "");
-    if (word.length == 0) {
-      setResult("");
-      lastSearchWord = "";
-      return;
-    }
-    if (word in dictCache && dictCache[word]) {
-      console.log("cache hit \"", word, "\"");
-      if (lastSearchWord != word) {
-        setResult(dictCache[word]);
-        lastSearchWord = word;
-      }
-      return;
-    } else {
-      console.log("cache miss");
-    }
-    var url = "http://www.bing.com/dict/search?q=" + encodeURIComponent(word);
-    console.log(url);
-    setResult("Searching <a href='" + url + "'>" +  escapeHtml(word) + "</a>");
-    
-    (typeof GM_xmlhttpRequest != "undefined" && GM_xmlhttpRequest || GM.xmlHttpRequest)({
-      url : url,
-      method : "GET",
-      onload : (response) => parseDictResult(word, response),
-      onerror : (response) => searchDictFail(word, response),
-    });
-  }
+}
 
-  document.addEventListener("mouseup", function (event) {
-    var divRect = dictResultDiv.getBoundingClientRect();
-		if (event.clientX >= divRect.left && event.clientX <= divRect.right &&
-      event.clientY >= divRect.top && event.clientY <= divRect.bottom) {
-      // Mouse is inside result element, do nothing.
-      return;
-    }
-    
-    var sel = window.getSelection().toString();
-    console.log("selected: \"", sel, "\"");
-    searchBingDict(sel);
-  });
-  
-  function dictTest() {
-    var testWords = ["hello",  // word definition
-                     "hello, this is world", //machine translation
-                     "ndalo", // ambigous
-                     "DNS queries", // example sentence only
-                     "<script>", // html escape
-                     "",
-                     "overrideMimeType", // no result
-                    ];
-    for (var i=0; i<testWords.length; i++) {
-    	setTimeout(searchBingDict, i*1500, testWords[i]);
-    }
-  }
-  // dictTest();
-  
-})();
-console.log("!!!!!!!!!!!!!!!!!!!!!/bing-dict!!!!!!!!!!!!!!!!!!!!!!!!");
+var dictCache = {};
+var entityMap = {
+	'&': '&amp;',
+	'<': '&lt;',
+	'>': '&gt;',
+	'"': '&quot;',
+	"'": '&#39;',
+	'/': '&#x2F;',
+	'`': '&#x60;',
+	'=': '&#x3D;'
+};
+
+function escapeHtml(string) {
+	return String(string).replace(/[&<>"'`=/]/g, function (s) {
+		return entityMap[s];
+	});
+}
+
+class DictProvider {
+	//resultView;
+	constructor(resultView) {
+		this.resultView = resultView;
+		let dictProvider = '<div class=dict-provider><input type=checkbox id=enableTrans><span>No Dict Provider<span></div>';
+		this.resultView.setProvider(dictProvider);
+	}
+	search(word) {
+		console.log(`base DictProvider::search ${word}`);
+		return 'not implement yet.';
+	}
+}
+
+class BingDictProvider extends DictProvider {
+	constructor(resultView) {
+		super(resultView);
+		let dictProvider = '<div class=dict-provider><input type=checkbox id=enableTrans><span>Bing Dict<span></div>';
+		this.resultView.setProvider(dictProvider);
+		this.baseURL = 'https://www.bing.com/';
+	}
+
+	search(word) {
+		let self = this;
+		/*
+		function playAudio(audioLink) {
+			let audio = new Audio(audioLink);
+			audio.play();
+		}*/
+		function parseVoiceLink(elem, id) {
+			let voiceLink;
+			//let voiceIcon;
+			try {
+				let linkElem = elem.childNodes[0];
+				console.log('PronuceLink', linkElem);
+				let handler = linkElem.attributes['onclick'].value;
+				let matches = handler.match(/'(https?:\/\/[^ ']*)'\s*,\s*'([^']*)'/m);
+				console.log('matches', matches);
+				voiceLink = matches[1];
+				//voiceIcon = matches[2];
+			} catch (e) {
+				console.log('parseVoiceLink', e);
+			}
+			let speakerIcon = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABoAAAAZCAYAAAAv3j5gAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAA3XAAAN1wFCKJt4AAAAB3RJTUUH4wICACYBOBTr1QAAAvZJREFUSMed1k2IVlUYB/Dfe8dRabqS9mFiEn3ZqQxC2lQU5a6FEBE4tAhaJUqrK0HRxkWLoBNupJA2UlCuigipdtXCwCyirEsLw4omM8aak5jizNui5x1ub+/YzDxwuefc8/F//s/n7VlA+vvv0Nt9HJSctuENNDhUN+3cqDO/70vGZv8Z102r5DQ/rkYdKDnp7T6u5DRectqJ97EBD2BsIeUuXpyDFdhaclpbN+38WjUKpLNhF17BeMxvGHVmIFft+Q4ewqd4tuQ0PmBWdQE6lFeXnPZi39Bd16I3rNiQXBmK7cS2/5huwKLktB3v4fkRSm8cwagX59bG/F28hho7Sk5rYEXJqcKLuB03hS/WLGCd1SPM3C85PYVnSk731k17quR0EE/gMbyAmQrPYQ8exq2XAIHLB4wGviw5TeBJ3IhXY98JfBSstpScehW2d02wBKlKTusxi/04i0dKTtfhZ3wZ++7DWIWblwiwKgLgLnyFl/AWTsf6ZPj7+5hvGQCtWyLQxnhfj6tD4zU42mEAv+H8ICUqS5e50PjzMNEtWN8x1eZ4z+BPXIPecoDmAXEGl0XenIrvg2A6H8+ES2X5ImQlNmE6LuwNBVW/U32Wx6jk1MPdof3X+DXMB390FBnHOfSXBVQ3bR8f420crpt2OoDh23hPhFmn0V+BC4G+WPkrwKbwaDDcgHti/YNOzZvAMcxV+GmJhH4ZUUx3RahP49BQGrQDoKPL8FG3lcBhTOHpumlnSk7ronaKljFbYS9OLhJjFv1OpR/47Aju77DZgAdjfKxu2rkqqN0WBXNrZ/MoudAJ2+F2faJu2tmS0yrsiET9MJiqIoLO4WzdtF/UTTsZLXtqBNDJLlC3j3U/4fEYH6yb9vR8wtZN22186qb9BHfi+NAlZ4aBRv2j4GUcwDsLdOF/t+eS06aS05GSUz+eN0tOKxcZMFX3rmqBhNQ/sFndtD9iEq/H0jcREJeMyLhjrhudvUVqd0X8aHyGH0b45X/lb9cUC+N7uVGjAAAAAElFTkSuQmCC';
+			let voiceHTML = `<audio id="${id}" src="${voiceLink}" preload="auto"></audio>
+<a onclick="javascript: document.getElementById('${id}').play()" onmouseover="javascript: document.getElementById('${id}').play()">
+<img class="audioPlayer" src="${speakerIcon}"></img></a>`;
+			return voiceHTML;
+		}
+		function parsePronuce(elem) {
+			let prUS = elem.querySelector('.hd_prUS');
+			let prUK = elem.querySelector('.hd_pr');
+			let pronText = '';
+			if (prUS)
+				pronText = escapeHtml(prUS.innerText) + parseVoiceLink(prUS.nextElementSibling, 'voiceUS') +
+					'&emsp;' + escapeHtml(prUK.innerText) + parseVoiceLink(prUK.nextElementSibling, 'voiceUK');
+			else
+				pronText = escapeHtml(elem.innerText);
+			return pronText;
+		}
+		function parseDefinition(page, url) {
+			//console.log('parseDefinition');
+			let qdef = page.querySelector('.qdef');
+			//console.log('qdef ', qdef);
+			let hd_area = qdef.childNodes[0];
+			let headword = '';
+			let pronuce = '';
+			try {
+				headword = escapeHtml(hd_area.querySelector('#headword').innerText);
+				pronuce = parsePronuce(hd_area.querySelector('.hd_tf_lh'));
+			} catch (e) { }
+
+
+			headword = `<div class='headword'>
+                <a href='${url}' target='_blank'>${headword ? headword : word}</a>
+                </div>`;
+			pronuce = `<div class='pronuce'>${pronuce}</div>`;
+
+			let defs = '';
+			try {
+				let def_area = qdef.childNodes[1];
+				let def_list = def_area.querySelectorAll('li');
+				defs = '<ul>';
+				for (let def of def_list) {
+					defs += `<li><span>${escapeHtml(def.childNodes[0].innerText)}</span>
+						${escapeHtml(def.childNodes[1].innerText)}</li>`;
+				}
+				defs += '</ul>';
+			} catch (e) {
+				defs = '';
+			}
+
+			return headword + pronuce + defs;
+		}
+
+		function parseMachTrans(page, url) {
+			//console.log('parseMachTrans');
+			try {
+				let trans_area = page.querySelector('.lf_area');
+				let smt_hw_elem = trans_area.querySelector('.smt_hw');
+				let smt_hw = escapeHtml(smt_hw_elem.innerText);
+				let headword = escapeHtml(smt_hw_elem.nextElementSibling.innerText);
+				let trans_result = escapeHtml(smt_hw_elem.nextElementSibling.nextElementSibling.innerText);
+				smt_hw = `<div class='mach_trans'>${smt_hw}</div>`;
+				headword = `<div class='headsentence'>
+                    <a href='${url}' target='_blank'>${headword}</a>
+                    </div>`;
+				trans_result = `<div class='mach_trans_result'>${trans_result}</div>`;
+
+				return smt_hw + headword + trans_result;
+			} catch (e) {
+				console.error('parseMachTrans error');
+				return '';
+			}
+		}
+
+		function parseBingDymArea(dym) {
+			let suggest = escapeHtml(dym.querySelector('.df_wb_a').innerText);
+			suggest = `<div class='div_title'>${suggest}</div>`;
+			let defs = '<ul>';
+			for (let s of dym.querySelectorAll('.df_wb_c')) {
+				let r0 = s.childNodes[0];
+				let r1 = s.childNodes[1];
+				defs += `<li><a class='suggest_word' href='//www.bing.com${r0.pathname}${r0.search}'>` +
+					`${escapeHtml(r0.innerText)}</a>${escapeHtml(r1.innerText)}</li>`;
+			}
+			defs += '</ul>';
+			return suggest + defs;
+		}
+
+		function parseSearchSuggest(page, url) {
+			//console.log('parseSearchSuggest');
+			let trans_area = page.querySelector('.lf_area');
+			let headword = escapeHtml(trans_area.querySelector('.dym_p').innerText);
+			let suggest = escapeHtml(trans_area.querySelector('.p2-2').innerText);
+			headword = `<div class='headword'><a href='${url}'>${headword}</a></div>`;
+			suggest = `<div class='div_title'>${suggest}</div>`;
+			let defs = '';
+			for (let dym of trans_area.querySelectorAll('.dym_area')) {
+				defs += parseBingDymArea(dym);
+			}
+
+			return `<div class='search_suggest_area'>${headword}${suggest}${defs}</div>`;
+		}
+
+		function parseDictResultDom(page, url) {
+			//console.log('page ', page);
+			let qdef = page.querySelector('.qdef');
+			let smt_hw = page.querySelector('.smt_hw');
+			let search_suggest = page.querySelector('.dym_area') && page.querySelector('.df_wb_c');
+			//let no_result = page.querySelector('.no_results');
+			if (qdef)
+				return parseDefinition(page, url);
+			else if (smt_hw)
+				return parseMachTrans(page, url);
+			else if (search_suggest)
+				return parseSearchSuggest(page, url);
+			else
+				return '';
+		}
+
+		const FAILURE_MSG = `No result.<br />Try <a href='https://www.bing.com/translator' target=_blank>Microsoft Translator</a>.`;
+
+		function parseDictResult(word, response) {
+			//console.log('search dict ok', response);
+			let defs = '';
+			let url = response.finalUrl;
+			try {
+				let doc = (new DOMParser()).parseFromString(response.responseText, 'text/html');
+				defs = parseDictResultDom(doc, url);
+				if (!defs)
+					defs = FAILURE_MSG;
+				dictCache[word] = defs;
+			} catch (e) {
+				console.log('parseDictResult failed:\n ', e, e.stack);
+				defs = `<span class='error'>Error</span> parsing result of <a href='${url}'>` +
+					`${escapeHtml(word)}</a>, <br />${FAILURE_MSG}`;
+			}
+
+			self.resultView.setResult(defs);
+		}
+
+		function searchDictFail(word, response) {
+			//console.log('search dict fail ', response);
+			let url = response.finalUrl;
+			let status = (response.status ? response.status : '')
+				+ ' ' + (response.statusText ? response.statusText : '');
+
+			self.resultView.setResult(`<span class='error'>Error</span>searching <a href='${url}'>${escapeHtml(word)}</a>,` +
+				`${status}<br />${FAILURE_MSG}`);
+		}
+
+		function searchBingDict(word) {
+			if (word in dictCache && dictCache[word]) {
+				console.log(`cache hit '${word}'`);
+				self.resultView.setResult(dictCache[word]);
+				return;
+			} else {
+				console.log('cache miss');
+			}
+			let url = 'http://www.bing.com/dict/search?q=' + encodeURIComponent(word);
+			console.log(url);
+			self.resultView.setResult(`Searching <a href='${url}' target='_blank'>${escapeHtml(word)}</a>`);
+
+			(typeof GM_xmlhttpRequest != 'undefined' && GM_xmlhttpRequest || GM.xmlHttpRequest)({
+				url: url,
+				method: 'GET',
+				onload: (response) => parseDictResult(word, response),
+				onerror: (response) => searchDictFail(word, response),
+			});
+		}
+
+		searchBingDict(word);
+	}
+}
+
+var CurrentSelWord = '';
+
+class DictPrefs {
+	constructor() {
+		this.transEnabledOnPage = false;
+	}
+	updateTransEnabledList(key, value) {
+		GM.getValue('transEnabledList', {}).then((transEnabledList) => {
+			console.log(`update ${key} => ${value} into transEnabledList`, transEnabledList);
+			transEnabledList[key] = value;
+			GM.setValue('transEnabledList', transEnabledList);
+			//console.log(`updated ${key} => ${value} into transEnabledList`, transEnabledList);
+		});
+	}
+	checkEnableTrans() {
+		GM.getValue('transEnabledList', {}).then((transEnabledList) => {
+			console.log('transEnabledList', transEnabledList);
+			if (!transEnabledList)
+				return;
+			if (typeof transEnabledList === 'string')
+				GM.setValue('transEnabledList', {});
+			if (transEnabledList[location.host] === true)
+				this.transEnabledOnPage = true;
+		});
+	}
+}
+var dictPrefs = new DictPrefs();
+dictPrefs.checkEnableTrans();
+
+var dictResultView = new DictResultView(dictPrefs);
+var bingDict = new BingDictProvider(dictResultView);
+
+document.addEventListener('mouseup', function (event) {
+	CurrentSelWord = window.getSelection().toString().replace(/^\s*|\s*$/g, '');
+	console.log(`selected: '${CurrentSelWord}', length ${CurrentSelWord.length}`);
+
+	if (dictResultView.mouseEventInView(event) && CurrentSelWord.length === 0)
+		return;
+
+	if (CurrentSelWord.length == 0) {
+		dictResultView.hideResult();
+		return;
+	}
+
+	if (!dictPrefs.transEnabledOnPage) {
+		if (!dictResultView.transEnableShown)
+			dictResultView.setResult('');
+		console.log('translate not enabled.');
+		return;
+	}
+	bingDict.search(CurrentSelWord);
+});
+
+function dictTest() {
+	let testWords = [
+		'tunnel',
+		'hello',  // word definition
+		'你好',
+		'hello, this is world', //machine translation
+		'ndalo', // ambigous
+		'DNS queries', // example sentence only
+		'<script>', // html escape
+		'',
+		'overrideMimeType', // no result
+	];
+	for (let i = 0; i < testWords.length; i++) {
+		setTimeout(bingDict.search.bind(bingDict), i * 3000, testWords[i]);
+	}
+}
+//dictTest();
+
+console.log('!!!!!!!!!!!!!!!!!!!!!/bing-dict!!!!!!!!!!!!!!!!!!!!!!!!');
