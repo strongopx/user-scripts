@@ -4,7 +4,7 @@
 // @name:zh-CN     必应词典，带英语发音
 // @description    Translate selected words by Bing Dict(Dictionary support EN to CN, CN to EN), with EN pronunciation, with CN pinyin, translation is disabled by default, check the 'Bing Dict' at bottom left to enable tranlation.
 // @description:zh-CN 划词翻译，使用必应词典(支持英汉、汉英)，带英语发音，带中文拼音，默认不开启翻译，勾选左下角的'Bing Dict'开启翻译。
-// @version  1.4.3.1
+// @version  1.4.4
 // @author StrongOp
 // @supportURL  https://github.com/strongop/user-scripts/issues
 // @match    http://*/*
@@ -27,6 +27,8 @@
 
 /*
 Change Log:
+v1.4.4:
+	2 Feb 2019, Fix click headword, fix enable/disable translate, fix translate selected on result view.
 v1.4.1:
     31 Jan 2019, Refactor with class, Add pronunciation support.
 v1.3.8:
@@ -285,7 +287,9 @@ class DictProvider {
 	//resultView;
 	constructor(resultView) {
 		this.resultView = resultView;
-		let dictProvider = '<div class="dict-provider"><input type="checkbox" id="enableTrans" name="enableTrans"><label for="enableTrans">No Dict Provider</label></div>';
+		let dictProvider = `<div class="dict-provider">
+			<input type="checkbox" id="enableTrans" name="enableTrans">
+			<label for="enableTrans">No Dict Provider</label></div>`;
 		this.resultView.setProvider(dictProvider);
 	}
 	search(word) {
@@ -297,7 +301,11 @@ class DictProvider {
 class BingDictProvider extends DictProvider {
 	constructor(resultView) {
 		super(resultView);
-		let dictProvider = '<div class="dict-provider"><input type="checkbox" id="enableTrans" name="enableTrans"><label for="enableTrans">Bing Dict</label></div>';
+		let dictProvider = `<div class="dict-provider">
+			<input type="checkbox" id="enableTrans" name="enableTrans"
+				title="Click to enable/disable translation selection with Bing Dict" >
+			<label for="enableTrans">Bing Dict</label>
+			</div>`;
 		this.resultView.setProvider(dictProvider);
 		this.baseURL = 'https://www.bing.com/';
 	}
@@ -326,8 +334,10 @@ class BingDictProvider extends DictProvider {
 			let id = `${id_prefix}_${Math.random()}`;
 			let speakerIcon = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABoAAAAZCAYAAAAv3j5gAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAA3XAAAN1wFCKJt4AAAAB3RJTUUH4wICACYBOBTr1QAAAvZJREFUSMed1k2IVlUYB/Dfe8dRabqS9mFiEn3ZqQxC2lQU5a6FEBE4tAhaJUqrK0HRxkWLoBNupJA2UlCuigipdtXCwCyirEsLw4omM8aak5jizNui5x1ub+/YzDxwuefc8/F//s/n7VlA+vvv0Nt9HJSctuENNDhUN+3cqDO/70vGZv8Z102r5DQ/rkYdKDnp7T6u5DRectqJ97EBD2BsIeUuXpyDFdhaclpbN+38WjUKpLNhF17BeMxvGHVmIFft+Q4ewqd4tuQ0PmBWdQE6lFeXnPZi39Bd16I3rNiQXBmK7cS2/5huwKLktB3v4fkRSm8cwagX59bG/F28hho7Sk5rYEXJqcKLuB03hS/WLGCd1SPM3C85PYVnSk731k17quR0EE/gMbyAmQrPYQ8exq2XAIHLB4wGviw5TeBJ3IhXY98JfBSstpScehW2d02wBKlKTusxi/04i0dKTtfhZ3wZ++7DWIWblwiwKgLgLnyFl/AWTsf6ZPj7+5hvGQCtWyLQxnhfj6tD4zU42mEAv+H8ICUqS5e50PjzMNEtWN8x1eZ4z+BPXIPecoDmAXEGl0XenIrvg2A6H8+ES2X5ImQlNmE6LuwNBVW/U32Wx6jk1MPdof3X+DXMB390FBnHOfSXBVQ3bR8f420crpt2OoDh23hPhFmn0V+BC4G+WPkrwKbwaDDcgHti/YNOzZvAMcxV+GmJhH4ZUUx3RahP49BQGrQDoKPL8FG3lcBhTOHpumlnSk7ronaKljFbYS9OLhJjFv1OpR/47Aju77DZgAdjfKxu2rkqqN0WBXNrZ/MoudAJ2+F2faJu2tmS0yrsiET9MJiqIoLO4WzdtF/UTTsZLXtqBNDJLlC3j3U/4fEYH6yb9vR8wtZN22186qb9BHfi+NAlZ4aBRv2j4GUcwDsLdOF/t+eS06aS05GSUz+eN0tOKxcZMFX3rmqBhNQ/sFndtD9iEq/H0jcREJeMyLhjrhudvUVqd0X8aHyGH0b45X/lb9cUC+N7uVGjAAAAAElFTkSuQmCC';
 			let voiceHTML = `<audio id="${id}" src="${voiceLink}" preload="auto"></audio>
-<a onclick="javascript: document.getElementById('${id}').play()" onmouseover="javascript: document.getElementById('${id}').play()">
-<img class="audioPlayer" src="${speakerIcon}"></img></a>`;
+				<a onclick="javascript: document.getElementById('${id}').play()"
+					onmouseover="javascript: document.getElementById('${id}').play()">
+					<img class="audioPlayer" src="${speakerIcon}"></img>
+				</a>`;
 			return voiceHTML;
 		}
 		function parsePronuce(elem) {
@@ -386,7 +396,7 @@ class BingDictProvider extends DictProvider {
 				let trans_result = escapeHtml(smt_hw_elem.nextElementSibling.nextElementSibling.innerText);
 				smt_hw = `<div class='mach_trans'>${smt_hw}</div>`;
 				headword = `<div class='headsentence'>
-                    <a href='${url}' target='_blank'>${headword}</a>
+                    	<a href='${url}' target='_blank'>${headword}</a>
                     </div>`;
 				trans_result = `<div class='mach_trans_result'>${trans_result}</div>`;
 
@@ -404,7 +414,8 @@ class BingDictProvider extends DictProvider {
 			for (let s of dym.querySelectorAll('.df_wb_c')) {
 				let r0 = s.childNodes[0];
 				let r1 = s.childNodes[1];
-				defs += `<li><a class='suggest_word' href='//www.bing.com${r0.pathname}${r0.search}'>` +
+				defs += `<li>
+					<a class='suggest_word' href='//www.bing.com${r0.pathname}${r0.search}'>` +
 					`${escapeHtml(r0.innerText)}</a>${escapeHtml(r1.innerText)}</li>`;
 			}
 			defs += '</ul>';
@@ -456,8 +467,9 @@ class BingDictProvider extends DictProvider {
 				dictCache[word] = defs;
 			} catch (e) {
 				console.log('parseDictResult failed:\n ', e, e.stack);
-				defs = `<span class='error'>Error</span> parsing result of <a href='${url}'>` +
-					`${escapeHtml(word)}</a>, <br />${FAILURE_MSG}`;
+				defs = `<span class='error'>Error</span> parsing result of
+					<a href='${url}'>${escapeHtml(word)}</a>, <br />
+					${FAILURE_MSG}`;
 			}
 
 			self.resultView.setResult(defs);
@@ -469,8 +481,9 @@ class BingDictProvider extends DictProvider {
 			let status = (response.status ? response.status : '')
 				+ ' ' + (response.statusText ? response.statusText : '');
 
-			self.resultView.setResult(`<span class='error'>Error</span>searching <a href='${url}'>${escapeHtml(word)}</a>,` +
-				`${status}<br />${FAILURE_MSG}`);
+			self.resultView.setResult(`<span class='error'>Error</span>
+				searching <a href='${url}'>${escapeHtml(word)}</a>, ${status}<br />
+				${FAILURE_MSG}`);
 		}
 
 		function searchBingDict(word) {
@@ -530,16 +543,20 @@ var dictResultView = new DictResultView(dictPrefs);
 var bingDict = new BingDictProvider(dictResultView);
 
 document.addEventListener('mouseup', function (event) {
-	// click on enable/disable translation area
+	// click on enable/disable translation area, return, so the checkbox handler can be called
 	if (dictResultView.mouseEventInDictProviderBanner(event))
 		return;
+
+	// get selected word/sentense
 	CurrentSelWord = window.getSelection().toString().replace(/^\s*|\s*$/g, '');
 	console.log(`selected: '${CurrentSelWord}', length ${CurrentSelWord.length}`);
+
 	// click on page other than result view hides the result view
 	if (!dictResultView.mouseEventInView(event) && CurrentSelWord.length == 0) {
 		dictResultView.hideResult();
 		return;
 	}
+
 	// show enable translate option if not enabled
 	if (!dictPrefs.transEnabledOnPage) {
 		if (!dictResultView.transEnableShown)
@@ -547,10 +564,15 @@ document.addEventListener('mouseup', function (event) {
 		console.log('translate not enabled.');
 		return;
 	}
-	// return if click on result view
-	if (dictResultView.mouseEventInView(event) && CurrentSelWord.length == 0) {
+
+	// return if single click on result view
+	// return if click headword to open new tab
+	// go on translate if word selected in page/result_view
+	if (dictResultView.mouseEventInView(event) &&
+		(CurrentSelWord.length == 0 || event.target.parentNode.className == 'headword')) {
 		return;
 	}
+
 	bingDict.search(CurrentSelWord);
 });
 
@@ -567,15 +589,19 @@ function dictTest() {
 		'overrideMimeType', // no result
 	];
 	for (let i = 0; i < testWords.length; i++) {
-		setTimeout(bingDict.search.bind(bingDict), i * 3000, testWords[i]);
+		setTimeout(bingDict.search.bind(bingDict), (i + 1) * 3000, testWords[i]);
 	}
-	alert(
-		`
+	dictResultView.setResult(
+		`<code>
+		<pre>
 		/*TODO:
 		* 1. Translation enable/disable test.
 		* 2. Audio/voice test.
+		* 3. Click on headword to open new tab of dict.bing.com
+		* 4. Select word on result view to translate
 		*/
-		`);
+		</pre>
+		</code>`);
 }
 //dictTest();
 
