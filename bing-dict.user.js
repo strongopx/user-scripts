@@ -2,9 +2,9 @@
 // @namespace      ATGT
 // @name           Bing Dict, with pronunciation
 // @name:zh-CN     必应词典，带英语发音
-// @description    Translate selected words by Bing Dict, with pronunciation
-// @description:zh-CN 划词翻译，使用必应词典，带英语发音
-// @version  1.4.2
+// @description    Translate selected words by Bing Dict, with EN pronunciation, with CN pinyin, translation is disabled by default, check the 'Bing Dict' at bottom left to enable tranlation.
+// @description:zh-CN 划词翻译，使用必应词典(支持英汉、汉英)，带英语发音，带中文拼音，默认不开启翻译，勾选左下角的'Bing Dict'开启翻译。
+// @version  1.4.3
 // @author StrongOp
 // @supportURL  https://github.com/strongop/user-scripts/issues
 // @match    http://*/*
@@ -60,20 +60,21 @@ if (typeof GM_xmlhttpRequest !== 'undefined')
     };
 */
 console.log('!!!!!!!!!!!!!!!!!!!!!bing-dict!!!!!!!!!!!!!!!!!!!!!!!!');
+let dict_result_id = 'ATGT-bing-dict-result-wrapper';
 const DICT_RESULT_CSS = `
-    div#ATGT-bing-dict-result-wrapper-reset {
+    div#${dict_result_id}-reset {
         all: initial;
         * {
             all: initial;
         }
     }
-    div#ATGT-bing-dict-result-wrapper {
+    div#${dict_result_id} {
         all: initial;
         div, img, a, input, span, ul, li {
             all: initial;
         }
     }
-    div#ATGT-bing-dict-result-wrapper {
+    div#${dict_result_id} {
         display: block;
         position: fixed;
         left: 2px;
@@ -88,7 +89,7 @@ const DICT_RESULT_CSS = `
         font-family: sans-serif;
         white-space: normal;
     }
-    div#ATGT-bing-dict-result-wrapper .dict-provider {
+    div#${dict_result_id} .dict-provider {
         font-size: xx-small;
         float: right;
         margin-left: 0.5rem;
@@ -98,7 +99,7 @@ const DICT_RESULT_CSS = `
         right: 2px;
         */
     }
-    div#ATGT-bing-dict-result-wrapper .dict-provider input {
+    div#${dict_result_id} .dict-provider input {
         display: inline;
         vertical-align: bottom;
         transform: scale(0.7);
@@ -106,64 +107,64 @@ const DICT_RESULT_CSS = `
         border: solid 1px;
         -webkit-appearance: checkbox;
     }
-    div#ATGT-bing-dict-result-wrapper .search_suggest_area {
+    div#${dict_result_id} .search_suggest_area {
         font-size: xx-small;
     }
-    div#ATGT-bing-dict-result-wrapper .error {
+    div#${dict_result_id} .error {
         color: red;
     }
-    div#ATGT-bing-dict-result-wrapper .headword {
+    div#${dict_result_id} .headword {
         color: #37a;
         font-weight: bold;
         font-size: medium;
     }
-    div#ATGT-bing-dict-result-wrapper .div_title {
+    div#${dict_result_id} .div_title {
         font-weight: bold;
     }
-    div#ATGT-bing-dict-result-wrapper .suggest_word {
+    div#${dict_result_id} .suggest_word {
         margin-right: 5px;
     }
-    div#ATGT-bing-dict-result-wrapper .mach_trans {
+    div#${dict_result_id} .mach_trans {
         font-style: italic;
         font-size: x-small;
     }
-    div#ATGT-bing-dict-result-wrapper a:link {
+    div#${dict_result_id} a:link {
         color: #37a;
         text-decoration: none;
     }
-    div#ATGT-bing-dict-result-wrapper a:hover {
+    div#${dict_result_id} a:hover {
         color: white;
         background-color: #37a;
     }
-    div#ATGT-bing-dict-result-wrapper a:visited {
+    div#${dict_result_id} a:visited {
         color: #37a;
     }
-    div#ATGT-bing-dict-result-wrapper .pronuce {
+    div#${dict_result_id} .pronuce {
         color: gray;
     }
-    div#ATGT-bing-dict-result-wrapper .pronuce audio {
+    div#${dict_result_id} .pronuce audio {
         display: inline;
     }
-    div#ATGT-bing-dict-result-wrapper .pronuce a {
+    div#${dict_result_id} .pronuce a {
         width: initial;
         height: initial;
     }
-    div#ATGT-bing-dict-result-wrapper .pronuce a:hover {
+    div#${dict_result_id} .pronuce a:hover {
         color: white;
         background-color: white;
     }
-    div#ATGT-bing-dict-result-wrapper .mach_trans_result {
+    div#${dict_result_id} .mach_trans_result {
         color: gray;
     }
-    div#ATGT-bing-dict-result-wrapper ul {
+    div#${dict_result_id} ul {
         list-style-type: none;
         padding: 1px;
         margin: 0px;
     }
-    div#ATGT-bing-dict-result-wrapper ul li{
+    div#${dict_result_id} ul li{
         margin-top: 1px;
     }
-    div#ATGT-bing-dict-result-wrapper ul li span {
+    div#${dict_result_id} ul li span {
         float:left;
         color: white;
         background-color: gray;
@@ -171,10 +172,10 @@ const DICT_RESULT_CSS = `
         padding: 0 2px;
         margin-right: 3px;
     }
-	div#ATGT-bing-dict-result-wrapper a img.audioPlayer:hover {
+	div#${dict_result_id} a img.audioPlayer:hover {
 		opacity: 0.8;
 	}
-	div#ATGT-bing-dict-result-wrapper img.audioPlayer {
+	div#${dict_result_id} img.audioPlayer {
 		width: 1em;
 		height: 1em;
 	}
@@ -198,9 +199,9 @@ class DictResultView {
 	createDictResultDiv() {
 		this.addStyleSheet();
 		let div_wrapper_reset = document.createElement('DIV');
-		div_wrapper_reset.id = 'ATGT-bing-dict-result-wrapper-reset';
+		div_wrapper_reset.id = `${dict_result_id}-reset`;
 		let div = document.createElement('DIV');
-		div.id = 'ATGT-bing-dict-result-wrapper';
+		div.id = `${dict_result_id}`;
 		div_wrapper_reset.appendChild(div);
 		document.body.appendChild(div_wrapper_reset);
 		this.dictResultDiv = div;
@@ -229,7 +230,19 @@ class DictResultView {
 			console.log('mouse in result area');
 		return isInView;
 	}
-
+	mouseEventInDictProviderBanner(event) {
+		// if Mouse is inside dict provider to enable/disable tranlation
+		try {
+			let divRect = this.dictResultDiv.querySelector(`.dict-provider`).getBoundingClientRect();
+			let isInView = (event.clientX >= divRect.left && event.clientX <= divRect.right &&
+				event.clientY >= divRect.top && event.clientY <= divRect.bottom);
+			if (isInView)
+				console.log('mouse in dict provider banner');
+			return isInView;
+		} catch (e) {
+			return false;
+		}
+	}
 	showEnableTransChoice() {
 		this.transEnableShown = true;
 		let prefs = this.prefs;
@@ -243,7 +256,7 @@ class DictResultView {
 			else
 				view.hideResult();
 		}
-		let enableCheckbox = document.querySelector('div#ATGT-bing-dict-result-wrapper input#enableTrans');
+		let enableCheckbox = document.querySelector(`div#${dict_result_id} input#enableTrans`);
 		enableCheckbox.checked = this.prefs.transEnabledOnPage;
 		enableCheckbox.onclick = enableTransChoiceHandler;
 	}
@@ -272,7 +285,7 @@ class DictProvider {
 	//resultView;
 	constructor(resultView) {
 		this.resultView = resultView;
-		let dictProvider = '<div class=dict-provider><input type=checkbox id=enableTrans><span>No Dict Provider<span></div>';
+		let dictProvider = '<div class="dict-provider"><input type="checkbox" id="enableTrans" name="enableTrans"><label for="enableTrans">No Dict Provider</label></div>';
 		this.resultView.setProvider(dictProvider);
 	}
 	search(word) {
@@ -284,7 +297,7 @@ class DictProvider {
 class BingDictProvider extends DictProvider {
 	constructor(resultView) {
 		super(resultView);
-		let dictProvider = '<div class=dict-provider><input type=checkbox id=enableTrans><span>Bing Dict<span></div>';
+		let dictProvider = '<div class="dict-provider"><input type="checkbox" id="enableTrans" name="enableTrans"><label for="enableTrans">Bing Dict</label></div>';
 		this.resultView.setProvider(dictProvider);
 		this.baseURL = 'https://www.bing.com/';
 	}
@@ -296,20 +309,21 @@ class BingDictProvider extends DictProvider {
 			let audio = new Audio(audioLink);
 			audio.play();
 		}*/
-		function parseVoiceLink(elem, id) {
+		function parseVoiceLink(elem, id_prefix) {
 			let voiceLink;
 			//let voiceIcon;
 			try {
 				let linkElem = elem.childNodes[0];
-				console.log('PronuceLink', linkElem);
+				//console.log('PronuceLink', linkElem);
 				let handler = linkElem.attributes['onclick'].value;
 				let matches = handler.match(/'(https?:\/\/[^ ']*)'\s*,\s*'([^']*)'/m);
-				console.log('matches', matches);
+				//console.log('matches', matches);
 				voiceLink = matches[1];
 				//voiceIcon = matches[2];
 			} catch (e) {
 				console.log('parseVoiceLink', e);
 			}
+			let id = `${id_prefix}_${Math.random()}`;
 			let speakerIcon = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABoAAAAZCAYAAAAv3j5gAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAA3XAAAN1wFCKJt4AAAAB3RJTUUH4wICACYBOBTr1QAAAvZJREFUSMed1k2IVlUYB/Dfe8dRabqS9mFiEn3ZqQxC2lQU5a6FEBE4tAhaJUqrK0HRxkWLoBNupJA2UlCuigipdtXCwCyirEsLw4omM8aak5jizNui5x1ub+/YzDxwuefc8/F//s/n7VlA+vvv0Nt9HJSctuENNDhUN+3cqDO/70vGZv8Z102r5DQ/rkYdKDnp7T6u5DRectqJ97EBD2BsIeUuXpyDFdhaclpbN+38WjUKpLNhF17BeMxvGHVmIFft+Q4ewqd4tuQ0PmBWdQE6lFeXnPZi39Bd16I3rNiQXBmK7cS2/5huwKLktB3v4fkRSm8cwagX59bG/F28hho7Sk5rYEXJqcKLuB03hS/WLGCd1SPM3C85PYVnSk731k17quR0EE/gMbyAmQrPYQ8exq2XAIHLB4wGviw5TeBJ3IhXY98JfBSstpScehW2d02wBKlKTusxi/04i0dKTtfhZ3wZ++7DWIWblwiwKgLgLnyFl/AWTsf6ZPj7+5hvGQCtWyLQxnhfj6tD4zU42mEAv+H8ICUqS5e50PjzMNEtWN8x1eZ4z+BPXIPecoDmAXEGl0XenIrvg2A6H8+ES2X5ImQlNmE6LuwNBVW/U32Wx6jk1MPdof3X+DXMB390FBnHOfSXBVQ3bR8f420crpt2OoDh23hPhFmn0V+BC4G+WPkrwKbwaDDcgHti/YNOzZvAMcxV+GmJhH4ZUUx3RahP49BQGrQDoKPL8FG3lcBhTOHpumlnSk7ronaKljFbYS9OLhJjFv1OpR/47Aju77DZgAdjfKxu2rkqqN0WBXNrZ/MoudAJ2+F2faJu2tmS0yrsiET9MJiqIoLO4WzdtF/UTTsZLXtqBNDJLlC3j3U/4fEYH6yb9vR8wtZN22186qb9BHfi+NAlZ4aBRv2j4GUcwDsLdOF/t+eS06aS05GSUz+eN0tOKxcZMFX3rmqBhNQ/sFndtD9iEq/H0jcREJeMyLhjrhudvUVqd0X8aHyGH0b45X/lb9cUC+N7uVGjAAAAAElFTkSuQmCC';
 			let voiceHTML = `<audio id="${id}" src="${voiceLink}" preload="auto"></audio>
 <a onclick="javascript: document.getElementById('${id}').play()" onmouseover="javascript: document.getElementById('${id}').play()">
@@ -461,11 +475,11 @@ class BingDictProvider extends DictProvider {
 
 		function searchBingDict(word) {
 			if (word in dictCache && dictCache[word]) {
-				console.log(`cache hit '${word}'`);
+				//console.log(`cache hit '${word}'`);
 				self.resultView.setResult(dictCache[word]);
 				return;
 			} else {
-				console.log('cache miss');
+				//console.log('cache miss');
 			}
 			let url = 'http://www.bing.com/dict/search?q=' + encodeURIComponent(word);
 			console.log(url);
@@ -516,21 +530,25 @@ var dictResultView = new DictResultView(dictPrefs);
 var bingDict = new BingDictProvider(dictResultView);
 
 document.addEventListener('mouseup', function (event) {
+	// click on enable/disable translation area
+	if (dictResultView.mouseEventInDictProviderBanner(event))
+		return;
 	CurrentSelWord = window.getSelection().toString().replace(/^\s*|\s*$/g, '');
 	console.log(`selected: '${CurrentSelWord}', length ${CurrentSelWord.length}`);
-
-	if (dictResultView.mouseEventInView(event) && CurrentSelWord.length === 0)
-		return;
-
-	if (CurrentSelWord.length == 0) {
+	// click on page other than result view hides the result view
+	if (!dictResultView.mouseEventInView(event) && CurrentSelWord.length == 0) {
 		dictResultView.hideResult();
 		return;
 	}
-
+	// show enable translate option if not enabled
 	if (!dictPrefs.transEnabledOnPage) {
 		if (!dictResultView.transEnableShown)
 			dictResultView.setResult('');
 		console.log('translate not enabled.');
+		return;
+	}
+	// return if click on result view
+	if (dictResultView.mouseEventInView(event) && CurrentSelWord.length == 0) {
 		return;
 	}
 	bingDict.search(CurrentSelWord);
@@ -551,6 +569,13 @@ function dictTest() {
 	for (let i = 0; i < testWords.length; i++) {
 		setTimeout(bingDict.search.bind(bingDict), i * 3000, testWords[i]);
 	}
+	alert(
+		`
+		/*TODO:
+		* 1. Translation enable/disable test.
+		* 2. Audio/voice test.
+		*/
+		`);
 }
 //dictTest();
 
