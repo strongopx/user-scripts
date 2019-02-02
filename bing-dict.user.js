@@ -4,7 +4,7 @@
 // @name:zh-CN     必应词典，带英语发音
 // @description    Translate selected words by Bing Dict, with pronunciation
 // @description:zh-CN 划词翻译，使用必应词典，带英语发音
-// @version  1.4.1
+// @version  1.4.2
 // @author StrongOp
 // @supportURL  https://github.com/strongop/user-scripts/issues
 // @match    http://*/*
