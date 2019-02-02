@@ -1,9 +1,9 @@
 // ==UserScript==
-// @namespace ATGT
-// @name     bing-dict
-// @name:zh-CN     必应词典
-// @description Select any word in any web to show it's definition from Bing Dict.
-// @description:zh-CN 划词翻译，使用必应词典
+// @namespace      ATGT
+// @name           Bing Dict, with pronunciation
+// @name:zh-CN     必应词典，带英语发音
+// @description    Translate selected words by Bing Dict, with pronunciation
+// @description:zh-CN 划词翻译，使用必应词典，带英语发音
 // @version  1.4.1
 // @author StrongOp
 // @supportURL  https://github.com/strongop/user-scripts/issues
@@ -28,7 +28,7 @@
 /*
 Change Log:
 v1.4.1:
-    31 Jan 2019, Refactor with class, Add audio support.
+    31 Jan 2019, Refactor with class, Add pronunciation support.
 v1.3.8:
 	30 Jan 2019, Need user click on checkbox to enable translate.
 v1.3.5:
