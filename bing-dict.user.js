@@ -1,25 +1,25 @@
 // ==UserScript==
-// @namespace      ATGT
-// @name           Bing Dict, with pronunciation
-// @name:zh-CN     必应词典，带英语发音
-// @description    Translate selected words by Bing Dict(Dictionary support EN to CN, CN to EN), with EN pronunciation, with CN pinyin, translation is disabled by default, check the 'Bing Dict' at bottom left to enable tranlation.
-// @description:zh-CN 划词翻译，使用必应词典(支持英汉、汉英)，带英语发音，带中文拼音，默认不开启翻译，勾选左下角的'Bing Dict'开启翻译。
-// @version  1.4.4
-// @author StrongOp
-// @supportURL  https://github.com/strongop/user-scripts/issues
-// @match    http://*/*
-// @match    https://*/*
-// -match    https://github.com/*
-// @require  https://greasemonkey.github.io/gm4-polyfill/gm4-polyfill.js
-// @grant    GM.xmlHttpRequest
-// @grant    GM_xmlhttpRequest
-// @grant    GM.setValue
-// @grant    GM.getValue
-// @grant    GM_setValue
-// @grant    GM_getValue
-// @connect  www.bing.com
-// @icon     https://www.bing.com/favicon.ico
-// @run-at   document-end
+// @namespace		ATGT
+// @name			Bing Dict, with pronunciation
+// @name:zh-CN	 	必应词典，带英语发音
+// @description		Translate selected words by Bing Dict(Dictionary support EN to CN, CN to EN), with EN pronunciation, with CN pinyin, translation is disabled by default, check the 'Bing Dict' at bottom left to enable tranlation.
+// @description:zh-CN	划词翻译，使用必应词典(支持英汉、汉英)，带英语发音，带中文拼音，默认不开启翻译，勾选左下角的'Bing Dict'开启翻译。
+// @version		1.4.5
+// @author		StrongOp
+// @supportURL	https://github.com/strongop/user-scripts/issues
+// @match	http://*/*
+// @match	https://*/*
+// -match	https://github.com/*
+// @require	https://greasemonkey.github.io/gm4-polyfill/gm4-polyfill.js
+// @grant	GM.xmlHttpRequest
+// @grant	GM_xmlhttpRequest
+// @grant	GM.setValue
+// @grant	GM.getValue
+// @grant	GM_setValue
+// @grant	GM_getValue
+// @connect	www.bing.com
+// @icon	https://www.bing.com/favicon.ico
+// @run-at	document-end
 // ==/UserScript==
 
 /* eslint: */
@@ -27,19 +27,21 @@
 
 /*
 Change Log:
+v1.4.5:
+	2 Feb 2019, Use more reliable CSS strategy.
 v1.4.4:
 	2 Feb 2019, Fix click headword, fix enable/disable translate, fix translate selected on result view.
 v1.4.1:
-    31 Jan 2019, Refactor with class, Add pronunciation support.
+	31 Jan 2019, Refactor with class, Add pronunciation support.
 v1.3.8:
 	30 Jan 2019, Need user click on checkbox to enable translate.
 v1.3.5:
 	21 Dec 2018, Fix GM_xmlhttpRequest not def in Greasemonkey, GM not define in Tampermonkey
 v1.3.4:
-    28 Nov 2018, Fix GM.xmlHttpRequest not def in chrome.
+	28 Nov 2018, Fix GM.xmlHttpRequest not def in chrome.
 v1.3.3:
 	28 Jan 2018, Fix dict provider overlap with result.
-  	    		 Add test cases.
+				 Add test cases.
 v1.3.2:
 	27 Jan 2018, Add dict provider name: Bing Dict.
 v1.3.1:
@@ -56,124 +58,119 @@ v1.0:
 
 /*
 if (typeof GM_xmlhttpRequest !== 'undefined')
-    var GM = {
-        setValue: GM_setValue,
-        getValue: GM_getValue
-    };
+	var GM = {
+		setValue: GM_setValue,
+		getValue: GM_getValue
+	};
 */
 console.log('!!!!!!!!!!!!!!!!!!!!!bing-dict!!!!!!!!!!!!!!!!!!!!!!!!');
 let dict_result_id = 'ATGT-bing-dict-result-wrapper';
 const DICT_RESULT_CSS = `
-    div#${dict_result_id}-reset {
-        all: initial;
-        * {
-            all: initial;
-        }
-    }
-    div#${dict_result_id} {
-        all: initial;
-        div, img, a, input, span, ul, li {
-            all: initial;
-        }
-    }
-    div#${dict_result_id} {
-        display: block;
-        position: fixed;
-        left: 2px;
-        bottom: 2px;
-        max-width: 32%;
-        z-index: 2100000000;
-        padding: 0;
-        margin: 0;
-        color: black;
-        background-color: rgba(255,255,255,0.9);
-        font-size: small;
-        font-family: sans-serif;
-        white-space: normal;
-    }
-    div#${dict_result_id} .dict-provider {
-        font-size: xx-small;
-        float: right;
-        margin-left: 0.5rem;
-        /*
-        position: absolute;
-        top: 2px;
-        right: 2px;
-        */
-    }
-    div#${dict_result_id} .dict-provider input {
-        display: inline;
-        vertical-align: bottom;
-        transform: scale(0.7);
-        margin: 0 0;
-        border: solid 1px;
-        -webkit-appearance: checkbox;
-    }
-    div#${dict_result_id} .search_suggest_area {
-        font-size: xx-small;
-    }
-    div#${dict_result_id} .error {
-        color: red;
-    }
-    div#${dict_result_id} .headword {
-        color: #37a;
-        font-weight: bold;
-        font-size: medium;
-    }
-    div#${dict_result_id} .div_title {
-        font-weight: bold;
-    }
-    div#${dict_result_id} .suggest_word {
-        margin-right: 5px;
-    }
-    div#${dict_result_id} .mach_trans {
-        font-style: italic;
-        font-size: x-small;
-    }
-    div#${dict_result_id} a:link {
-        color: #37a;
-        text-decoration: none;
-    }
-    div#${dict_result_id} a:hover {
-        color: white;
-        background-color: #37a;
-    }
-    div#${dict_result_id} a:visited {
-        color: #37a;
-    }
-    div#${dict_result_id} .pronuce {
-        color: gray;
-    }
-    div#${dict_result_id} .pronuce audio {
-        display: inline;
-    }
-    div#${dict_result_id} .pronuce a {
-        width: initial;
-        height: initial;
-    }
-    div#${dict_result_id} .pronuce a:hover {
-        color: white;
-        background-color: white;
-    }
-    div#${dict_result_id} .mach_trans_result {
-        color: gray;
-    }
-    div#${dict_result_id} ul {
-        list-style-type: none;
-        padding: 1px;
-        margin: 0px;
-    }
-    div#${dict_result_id} ul li{
-        margin-top: 1px;
-    }
-    div#${dict_result_id} ul li span {
-        float:left;
-        color: white;
-        background-color: gray;
-        text-align: center;
-        padding: 0 2px;
-        margin-right: 3px;
-    }
+	div#${dict_result_id}-reset {
+		all: initial;
+	}
+	div#${dict_result_id}-reset * {
+		all: initial;
+		display: block;
+		font-family: sans-serif;
+		font-size: small;
+		font-weight: normal;
+		white-space: normal;
+	}
+
+	div#${dict_result_id} {
+		display: block;
+		position: fixed;
+		left: 2px;
+		bottom: 2px;
+		max-width: 32%;
+		z-index: 2100000000;
+		padding: 0;
+		margin: 0;
+		color: black;
+		background-color: rgba(255,255,255,0.9);
+	}
+	div#${dict_result_id} .dict-provider {
+		float: right;
+		margin-left: 0.5rem;
+		/*
+		position: absolute;
+		top: 2px;
+		right: 2px;
+		*/
+	}
+	div#${dict_result_id} .dict-provider * {
+		display: inline;
+		font-size: xx-small;
+	}
+	div#${dict_result_id} .dict-provider input {
+		vertical-align: bottom;
+		transform: scale(0.7);
+		border: solid 1px;
+		-webkit-appearance: checkbox;
+	}
+	div#${dict_result_id} .search_suggest_area {
+		font-size: xx-small;
+	}
+	div#${dict_result_id} .error {
+		color: red;
+	}
+	div#${dict_result_id} .headword a{
+		display: inline-block;
+		font-weight: bold;
+		font-size: medium;
+	}
+	div#${dict_result_id} .div_title {
+		font-weight: bold;
+	}
+	div#${dict_result_id} .suggest_word {
+		margin-right: 5px;
+	}
+	div#${dict_result_id} .mach_trans {
+		font-style: italic;
+		font-size: x-small;
+	}
+	/* a: link visited hover active, the order matters */
+	div#${dict_result_id} a:link {
+		color: #37a;
+		background-color: white;
+		text-decoration: none;
+	}
+	div#${dict_result_id} a:visited {
+		color: #37a;
+	}
+	div#${dict_result_id} a:hover {
+		color: white;
+		background-color: #37a;
+		cursor: pointer;
+	}
+	div#${dict_result_id} .pronuce * {
+		color: gray;
+		display: inline;
+	}
+	div#${dict_result_id} .pronuce a:hover {
+		color: white;
+		background-color: white;
+	}
+	div#${dict_result_id} .mach_trans_result {
+		color: gray;
+	}
+	div#${dict_result_id} ul {
+		list-style-type: none;
+		padding: 1px;
+		margin: 0px;
+	}
+	div#${dict_result_id} ul li{
+		margin-top: 1px;
+	}
+	div#${dict_result_id} ul li span.def-category {
+		float:left;
+		color: white;
+		background-color: gray;
+		text-align: center;
+		padding: 0 2px;
+		margin-right: 3px;
+	}
 	div#${dict_result_id} a img.audioPlayer:hover {
 		opacity: 0.8;
 	}
@@ -345,10 +342,10 @@ class BingDictProvider extends DictProvider {
 			let prUK = elem.querySelector('.hd_pr');
 			let pronText = '';
 			if (prUS)
-				pronText = escapeHtml(prUS.innerText) + parseVoiceLink(prUS.nextElementSibling, 'voiceUS') +
-					'&emsp;' + escapeHtml(prUK.innerText) + parseVoiceLink(prUK.nextElementSibling, 'voiceUK');
+				pronText = `<span>${escapeHtml(prUS.innerText)}</span>${parseVoiceLink(prUS.nextElementSibling, 'voiceUS')}
+					&emsp;<span>${escapeHtml(prUK.innerText)}</span>${parseVoiceLink(prUK.nextElementSibling, 'voiceUK')}`;
 			else
-				pronText = escapeHtml(elem.innerText);
+				pronText = `<span>${escapeHtml(elem.innerText)}</span>`;
 			return pronText;
 		}
 		function parseDefinition(page, url) {
@@ -365,8 +362,8 @@ class BingDictProvider extends DictProvider {
 
 
 			headword = `<div class='headword'>
-                <a href='${url}' target='_blank'>${headword ? headword : word}</a>
-                </div>`;
+				<a href='${url}' target='_blank'>${headword ? headword : word}</a>
+				</div>`;
 			pronuce = `<div class='pronuce'>${pronuce}</div>`;
 
 			let defs = '';
@@ -375,7 +372,7 @@ class BingDictProvider extends DictProvider {
 				let def_list = def_area.querySelectorAll('li');
 				defs = '<ul>';
 				for (let def of def_list) {
-					defs += `<li><span>${escapeHtml(def.childNodes[0].innerText)}</span>
+					defs += `<li><span class='def-category'>${escapeHtml(def.childNodes[0].innerText)}</span>
 						${escapeHtml(def.childNodes[1].innerText)}</li>`;
 				}
 				defs += '</ul>';
@@ -396,8 +393,8 @@ class BingDictProvider extends DictProvider {
 				let trans_result = escapeHtml(smt_hw_elem.nextElementSibling.nextElementSibling.innerText);
 				smt_hw = `<div class='mach_trans'>${smt_hw}</div>`;
 				headword = `<div class='headsentence'>
-                    	<a href='${url}' target='_blank'>${headword}</a>
-                    </div>`;
+						<a href='${url}' target='_blank'>${headword}</a>
+					</div>`;
 				trans_result = `<div class='mach_trans_result'>${trans_result}</div>`;
 
 				return smt_hw + headword + trans_result;
@@ -579,7 +576,7 @@ document.addEventListener('mouseup', function (event) {
 function dictTest() {
 	let testWords = [
 		'tunnel',
-		'hello',  // word definition
+		'hello', // word definition
 		'你好',
 		'hello, this is world', //machine translation
 		'ndalo', // ambigous
