@@ -10,7 +10,7 @@
 // @match    http://*/*
 // @match    https://*/*
 // -match    https://github.com/*
-// @require  https://raw.githubusercontent.com/strongop/user-scripts/master/gm4-polyfill.js
+// @require  https://greasemonkey.github.io/gm4-polyfill/gm4-polyfill.js
 // @grant    GM.xmlHttpRequest
 // @grant    GM_xmlhttpRequest
 // @grant    GM.setValue
