@@ -2,9 +2,9 @@
 // @namespace      ATGT
 // @name           Bing Dict, with pronunciation
 // @name:zh-CN     必应词典，带英语发音
-// @description    Translate selected words by Bing Dict, with EN pronunciation, with CN pinyin, translation is disabled by default, check the 'Bing Dict' at bottom left to enable tranlation.
+// @description    Translate selected words by Bing Dict(Dictionary support EN to CN, CN to EN), with EN pronunciation, with CN pinyin, translation is disabled by default, check the 'Bing Dict' at bottom left to enable tranlation.
 // @description:zh-CN 划词翻译，使用必应词典(支持英汉、汉英)，带英语发音，带中文拼音，默认不开启翻译，勾选左下角的'Bing Dict'开启翻译。
-// @version  1.4.3
+// @version  1.4.3.1
 // @author StrongOp
 // @supportURL  https://github.com/strongop/user-scripts/issues
 // @match    http://*/*
