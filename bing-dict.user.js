@@ -4,7 +4,7 @@
 // @name:zh-CN	 	必应词典，带英语发音
 // @description		Translate selected words by Bing Dict(Dictionary support EN to CN, CN to EN), with EN pronunciation, with CN pinyin, translation is disabled by default, check the 'Bing Dict' at bottom left to enable tranlation.
 // @description:zh-CN	划词翻译，使用必应词典(支持英汉、汉英)，带英语发音，带中文拼音，默认不开启翻译，勾选左下角的'Bing Dict'开启翻译。
-// @version		1.4.7
+// @version		1.4.11
 // @author		StrongOp
 // @supportURL	https://github.com/strongop/user-scripts/issues
 // @match	http://*/*
@@ -96,10 +96,11 @@ const DICT_RESULT_CSS = `
 		bottom: 2px;
 		max-width: 32%;
 		z-index: 2100000000;
-		padding: 0;
+		padding: 0px 3px;
 		margin: 0;
 		color: black;
 		background-color: rgba(255,255,255,0.9);
+        border-radius: 0.3em;
 	}
 	div#${dict_result_id} .dict-provider {
 		float: right;
@@ -115,7 +116,7 @@ const DICT_RESULT_CSS = `
 	}
 	div#${dict_result_id} .dict-provider input {
 		vertical-align: bottom;
-		transform: scale(0.7);
+		transform: scale(0.9);
 		border: solid 1px;
 		-webkit-appearance: checkbox;
 	}
@@ -146,7 +147,7 @@ const DICT_RESULT_CSS = `
 	/* a: link visited hover active, the order matters */
 	div#${dict_result_id} a:link {
 		color: #37a;
-		background-color: white;
+		background-color: rgba(255,255,255,0.9);
 		text-decoration: none;
 	}
 	div#${dict_result_id} a:visited {
@@ -162,7 +163,7 @@ const DICT_RESULT_CSS = `
 	}
 	div#${dict_result_id} .pronuce a:hover {
 		color: white;
-		background-color: white;
+		background-color: rgba(255,255,255,0.9);
 	}
 	div#${dict_result_id} .mach_trans_result {
 		color: gray;
@@ -182,6 +183,7 @@ const DICT_RESULT_CSS = `
 		text-align: center;
 		padding: 0 2px;
 		margin-right: 3px;
+        border-radius: 0.2em;
 	}
 	div#${dict_result_id} a img.audioPlayer:hover {
 		opacity: 0.8;
@@ -237,8 +239,6 @@ class DictResultView {
 		let divRect = this.dictResultDiv.getBoundingClientRect();
 		let isInView = (event.clientX >= divRect.left && event.clientX <= divRect.right &&
 			event.clientY >= divRect.top && event.clientY <= divRect.bottom);
-		if (isInView)
-			console.log('mouse in result area');
 		return isInView;
 	}
 	mouseEventInDictProviderBanner(event) {
@@ -247,8 +247,6 @@ class DictResultView {
 			let divRect = this.dictResultDiv.querySelector(`.dict-provider`).getBoundingClientRect();
 			let isInView = (event.clientX >= divRect.left && event.clientX <= divRect.right &&
 				event.clientY >= divRect.top && event.clientY <= divRect.bottom);
-			if (isInView)
-				console.log('mouse in dict provider banner');
 			return isInView;
 		} catch (e) {
 			return false;
@@ -297,8 +295,9 @@ class DictProvider {
 	constructor(resultView) {
 		this.resultView = resultView;
 		let dictProvider = `<div class="dict-provider">
-			<input type="checkbox" id="enableTrans" name="enableTrans">
-			<label for="enableTrans">No Dict Provider</label></div>`;
+			    <input type="checkbox" id="enableTrans" name="enableTrans">
+			    <label for="enableTrans">No Dict Provider</label>
+            </div>`;
 		this.resultView.setProvider(dictProvider);
 	}
 	search(word) {
@@ -320,7 +319,11 @@ class BingDictProvider extends DictProvider {
 	}
 
 	search(word) {
+		console.log(`>>> do search ${word}`);
 		let self = this;
+		function limitedSearchString(headword) {
+			return `${headword.substring(0, 77)}${(headword.length >= 77) ? '...' : ''}`;
+		}
 		/*
 		function playAudio(audioLink) {
 			let audio = new Audio(audioLink);
@@ -405,7 +408,7 @@ class BingDictProvider extends DictProvider {
 				let trans_result = escapeHtml(smt_hw_elem.nextElementSibling.nextElementSibling.innerText);
 				smt_hw = `<div class='mach_trans'>${smt_hw}</div>`;
 				headword = `<div class='headsentence'>
-						<a href='${url}' target='_blank'>${headword}</a>
+						<a href='${url}' target='_blank'>${limitedSearchString(headword)}</a>
 					</div>`;
 				trans_result = `<div class='mach_trans_result'>${trans_result}</div>`;
 
@@ -424,9 +427,9 @@ class BingDictProvider extends DictProvider {
 				let r0 = s.childNodes[0];
 				let r1 = s.childNodes[1];
 				defs += `<li>
-					<a class='suggest_word' href='//www.bing.com${r0.pathname}${r0.search}'>` +
-					`${escapeHtml(r0.innerText)}</a>
-					<span>${escapeHtml(r1.innerText)}<span>
+					    <a class='suggest_word' href='//www.bing.com${r0.pathname}${r0.search}' target='_blank'>
+					        ${escapeHtml(r0.innerText)}</a>
+					    <span>${escapeHtml(r1.innerText)}<span>
 					</li>`;
 			}
 			defs += '</ul>';
@@ -438,7 +441,7 @@ class BingDictProvider extends DictProvider {
 			let trans_area = page.querySelector('.lf_area');
 			let headword = escapeHtml(trans_area.querySelector('.dym_p').innerText);
 			let suggest = escapeHtml(trans_area.querySelector('.p2-2').innerText);
-			headword = `<div class='headword'><a href='${url}'>${headword}</a></div>`;
+			headword = `<div class='headword'><a href='${url}' target='_blank'>${headword}</a></div>`;
 			suggest = `<div class='div_title'>${suggest}</div>`;
 			let defs = '';
 			for (let detail of trans_area.querySelectorAll('.dym_area')) {
@@ -464,7 +467,8 @@ class BingDictProvider extends DictProvider {
 				return '';
 		}
 
-		const FAILURE_MSG = `No result.<br />Try <a href='https://www.bing.com/translator' target=_blank>Microsoft Translator</a>.`;
+		const FAILURE_MSG = `No result for '${escapeHtml(limitedSearchString(word))}'.<br />
+							Try <a href='https://www.bing.com/translator' target='_blank'>Microsoft Translator</a>.`;
 
 		function parseDictResult(word, response) {
 			//console.log('search dict ok', response);
@@ -479,7 +483,7 @@ class BingDictProvider extends DictProvider {
 			} catch (e) {
 				console.log('parseDictResult failed:\n ', e, e.stack);
 				defs = `<span class='error'>Error</span> parsing result of
-					<a href='${url}'>${escapeHtml(word)}</a>, <br />
+					<a href='${url}' target='_blank'>${escapeHtml(limitedSearchString(word))}</a>, <br />
 					${FAILURE_MSG}`;
 			}
 
@@ -493,7 +497,7 @@ class BingDictProvider extends DictProvider {
 				+ ' ' + (response.statusText ? response.statusText : '');
 
 			self.resultView.setResult(`<span class='error'>Error</span>
-				searching <a href='${url}'>${escapeHtml(word)}</a>, ${status}<br />
+				searching <a href='${url}' target='_blank'>${escapeHtml(limitedSearchString(word))}</a>, ${status}<br />
 				${FAILURE_MSG}`);
 		}
 
@@ -507,7 +511,9 @@ class BingDictProvider extends DictProvider {
 			}
 			let url = 'http://www.bing.com/dict/search?q=' + encodeURIComponent(word);
 			console.log(url);
-			self.resultView.setResult(`Searching <span class='headword'><a href='${url}' target='_blank'>${escapeHtml(word)}</a></span>`);
+			self.resultView.setResult(`Searching <span class='headword'>
+                    <a href='${url}' target='_blank'>${escapeHtml(limitedSearchString(word))}</a>
+                </span>`);
 
 			(typeof GM_xmlhttpRequest != 'undefined' && GM_xmlhttpRequest || GM.xmlHttpRequest)({
 				url: url,
@@ -580,7 +586,8 @@ document.addEventListener('mouseup', function (event) {
 	// return if click headword to open new tab
 	// go on translate if word selected in page/result_view
 	if (dictResultView.mouseEventInView(event) &&
-		(CurrentSelWord.length == 0 || event.target.parentNode.className == 'headword')) {
+		(CurrentSelWord.length == 0 || event.target.nodeName == 'A' ||
+			event.target.parentNode.nodeName == 'A')) {
 		return;
 	}
 
