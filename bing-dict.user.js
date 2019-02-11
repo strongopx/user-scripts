@@ -4,7 +4,7 @@
 // @name:zh-CN	 	必应词典，带英语发音
 // @description		Translate selected words by Bing Dict(Dictionary support EN to CN, CN to EN), with EN pronunciation, with CN pinyin, translation is disabled by default, check the 'Bing Dict' at bottom left to enable tranlation.
 // @description:zh-CN	划词翻译，使用必应词典(支持英汉、汉英)，带英语发音，带中文拼音，默认不开启翻译，勾选左下角的'Bing Dict'开启翻译。
-// @version		1.4.11
+// @version		1.4.12
 // @author		StrongOp
 // @supportURL	https://github.com/strongop/user-scripts/issues
 // @match	http://*/*
@@ -63,7 +63,7 @@ if (typeof GM_xmlhttpRequest !== 'undefined')
 		getValue: GM_getValue
 	};
 */
-console.log('!!!!!!!!!!!!!!!!!!!!!bing-dict!!!!!!!!!!!!!!!!!!!!!!!!');
+console.log(`=== bing-dict on '${location.href}' ===`);
 let dict_result_id = 'ATGT-bing-dict-result-wrapper';
 const DICT_RESULT_CSS = `
 	div#${dict_result_id}-reset {
@@ -95,30 +95,49 @@ const DICT_RESULT_CSS = `
 		left: 2px;
 		bottom: 2px;
 		max-width: 32%;
+		min-width: 34px;
+		min-height: 34px;
 		z-index: 2100000000;
 		padding: 0px 3px;
 		margin: 0;
 		color: black;
 		background-color: rgba(255,255,255,0.9);
-        border-radius: 0.3em;
+		border-radius: 0.3em;
+	}
+	div#${dict_result_id} .margin-for-badget {
+		margin-right: 20px;
 	}
 	div#${dict_result_id} .dict-provider {
+		/*
 		float: right;
 		margin-left: 0.5rem;
-		/*
+		*/
 		position: absolute;
 		top: 2px;
 		right: 2px;
-		*/
 	}
 	div#${dict_result_id} .dict-provider * {
 		font-size: xx-small;
 	}
+	div#${dict_result_id} .dict-provider img {
+		border-radius: 3px;
+		transition: all 0.4s ease-in-out;
+		width: 16px;
+	}
+	div#${dict_result_id} .dict-provider input ~ label img {
+		opacity: 0.5;
+	}
+	div#${dict_result_id} .dict-provider input:checked ~ label img {
+		opacity: 1;
+	}
+	div#${dict_result_id} .dict-provider img:hover {
+		width: 32px;
+	}
 	div#${dict_result_id} .dict-provider input {
+		display: none;
 		vertical-align: bottom;
 		transform: scale(0.9);
 		border: solid 1px;
-		-webkit-appearance: checkbox;
 	}
 	div#${dict_result_id} .search_suggest_area ul li * {
 		font-size: x-small;
@@ -128,8 +147,9 @@ const DICT_RESULT_CSS = `
 	}
 	div#${dict_result_id} .headword {
 		display: inline-block;
+		margin-right: 20px;
 	}
-	div#${dict_result_id} .headword a{
+	div#${dict_result_id} .headword a {
 		font-weight: bold;
 		font-size: medium;
 	}
@@ -158,6 +178,9 @@ const DICT_RESULT_CSS = `
 		background-color: #37a;
 		cursor: pointer;
 	}
+	div#${dict_result_id} .pronuce {
+		display: block
+	}
 	div#${dict_result_id} .pronuce * {
 		color: gray;
 	}
@@ -183,7 +206,7 @@ const DICT_RESULT_CSS = `
 		text-align: center;
 		padding: 0 2px;
 		margin-right: 3px;
-        border-radius: 0.2em;
+		border-radius: 0.2em;
 	}
 	div#${dict_result_id} a img.audioPlayer:hover {
 		opacity: 0.8;
@@ -295,9 +318,9 @@ class DictProvider {
 	constructor(resultView) {
 		this.resultView = resultView;
 		let dictProvider = `<div class="dict-provider">
-			    <input type="checkbox" id="enableTrans" name="enableTrans">
-			    <label for="enableTrans">No Dict Provider</label>
-            </div>`;
+				<input type="checkbox" id="enableTrans" name="enableTrans">
+				<label for="enableTrans">No Dict Provider</label>
+			</div>`;
 		this.resultView.setProvider(dictProvider);
 	}
 	search(word) {
@@ -309,10 +332,13 @@ class DictProvider {
 class BingDictProvider extends DictProvider {
 	constructor(resultView) {
 		super(resultView);
+		let bingIcon = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAzUExURQyEhCOPjzGXl0Gfn1OoqF+urm61tX++vpPJyaXS0rLY2L7e3szl5dns7OXy8vP5+f///xfq9dcAAACMSURBVDjL1dPBDgIhDARQhq3bIhbm/792D4bVROjeNM6VF0rbkNK3Ar0hBk43iQHpuADtPwDyBcj1vuewRCG97FgD6STpJlgAVD7juuhCOQTmAOoxSAnaYiA1vCFbW5dwnC9gs1kXOppkldkczvjnLN+B22zUj3Hcyzbd1lb6vPgrUknX6Hdgt5x+kQNn5Q3ayatBLQAAAABJRU5ErkJggg==';
 		let dictProvider = `<div class="dict-provider">
 			<input type="checkbox" id="enableTrans" name="enableTrans"
-				title="Click to enable/disable translation selection with Bing Dict" >
-			<label for="enableTrans">Bing Dict</label>
+				title="Click to enable/disable translation with Bing Dict" >
+			<label for="enableTrans">
+				<img src='${bingIcon}' alt='Bing Dict' title="Click to enable/disable translation with Bing Dict">
+			</label>
 			</div>`;
 		this.resultView.setProvider(dictProvider);
 		this.baseURL = 'https://www.bing.com/';
@@ -406,7 +432,7 @@ class BingDictProvider extends DictProvider {
 				let smt_hw = escapeHtml(smt_hw_elem.innerText);
 				let headword = escapeHtml(smt_hw_elem.nextElementSibling.innerText);
 				let trans_result = escapeHtml(smt_hw_elem.nextElementSibling.nextElementSibling.innerText);
-				smt_hw = `<div class='mach_trans'>${smt_hw}</div>`;
+				smt_hw = `<div class='mach_trans margin-for-badget'>${smt_hw}</div>`;
 				headword = `<div class='headsentence'>
 						<a href='${url}' target='_blank'>${limitedSearchString(headword)}</a>
 					</div>`;
@@ -427,9 +453,9 @@ class BingDictProvider extends DictProvider {
 				let r0 = s.childNodes[0];
 				let r1 = s.childNodes[1];
 				defs += `<li>
-					    <a class='suggest_word' href='//www.bing.com${r0.pathname}${r0.search}' target='_blank'>
-					        ${escapeHtml(r0.innerText)}</a>
-					    <span>${escapeHtml(r1.innerText)}<span>
+						<a class='suggest_word' href='//www.bing.com${r0.pathname}${r0.search}' target='_blank'>
+							${escapeHtml(r0.innerText)}</a>
+						<span>${escapeHtml(r1.innerText)}<span>
 					</li>`;
 			}
 			defs += '</ul>';
@@ -467,7 +493,7 @@ class BingDictProvider extends DictProvider {
 				return '';
 		}
 
-		const FAILURE_MSG = `No result for '${escapeHtml(limitedSearchString(word))}'.<br />
+		const FAILURE_MSG = `<span class='margin-for-badget'>No result for '${escapeHtml(limitedSearchString(word))}'.<span><br />
 							Try <a href='https://www.bing.com/translator' target='_blank'>Microsoft Translator</a>.`;
 
 		function parseDictResult(word, response) {
@@ -512,8 +538,8 @@ class BingDictProvider extends DictProvider {
 			let url = 'http://www.bing.com/dict/search?q=' + encodeURIComponent(word);
 			console.log(url);
 			self.resultView.setResult(`Searching <span class='headword'>
-                    <a href='${url}' target='_blank'>${escapeHtml(limitedSearchString(word))}</a>
-                </span>`);
+					<a href='${url}' target='_blank'>${escapeHtml(limitedSearchString(word))}</a>
+				</span>`);
 
 			(typeof GM_xmlhttpRequest != 'undefined' && GM_xmlhttpRequest || GM.xmlHttpRequest)({
 				url: url,
@@ -622,4 +648,4 @@ function dictTest() {
 }
 //dictTest();
 
-console.log('!!!!!!!!!!!!!!!!!!!!!/bing-dict!!!!!!!!!!!!!!!!!!!!!!!!');
+console.log(`=== /bing-dict on '${location.href}' ===`);
