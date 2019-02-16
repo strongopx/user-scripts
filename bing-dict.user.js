@@ -2,9 +2,9 @@
 // @namespace		ATGT
 // @name			Bing Dict, with pronunciation
 // @name:zh-CN	 	必应词典，带英语发音
-// @description		Translate selected words by Bing Dict(Dictionary support EN to CN, CN to EN), with EN pronunciation, with CN pinyin, translation is disabled by default, check the 'Bing Dict' at bottom left to enable tranlation.
-// @description:zh-CN	划词翻译，使用必应词典(支持英汉、汉英)，带英语发音，带中文拼音，默认不开启翻译，勾选左下角的'Bing Dict'开启翻译。
-// @version		1.4.12
+// @description		Translate selected words by Bing Dict(Dictionary support EN to CN, CN to EN), with EN pronunciation, with CN pinyin, translation is disabled by default, check the 'Bing Dict' at bottom left to enable tranlation. Auto play pronunciation can be enabled in menu.
+// @description:zh-CN	划词翻译，使用必应词典(支持英汉、汉英)，带英语发音，带中文拼音，默认不开启翻译，勾选左下角的'Bing Dict'开启翻译。自动播放发音可以通过菜单启用。
+// @version		1.4.15
 // @author		StrongOp
 // @supportURL	https://github.com/strongop/user-scripts/issues
 // @match	http://*/*
@@ -17,16 +17,21 @@
 // @grant	GM.getValue
 // @grant	GM_setValue
 // @grant	GM_getValue
+// @grant	GM_registerMenuCommand
 // @connect	www.bing.com
 // @icon	https://www.bing.com/favicon.ico
 // @run-at	document-end
 // ==/UserScript==
 
 /* eslint: */
-/* global GM GM_xmlhttpRequest GM_setValue GM_getValue */
-
+/* global GM GM_xmlhttpRequest GM_setValue GM_getValue GM_registerMenuCommand */
+/* eslint curly: ["off", "multi", "consistent"] */
 /*
 Change Log:
+v1.4.15:
+	16 Feb 2019, Use int max as z-index to fix overlayed in vgr.com
+v1.4.13:
+	13 Feb 2019, Add autoplay pronunciation menu
 v1.4.5:
 	2 Feb 2019, Use more reliable CSS strategy.
 v1.4.4:
@@ -97,7 +102,7 @@ const DICT_RESULT_CSS = `
 		max-width: 32%;
 		min-width: 34px;
 		min-height: 34px;
-		z-index: 2100000000;
+		z-index: 2147483647;
 		padding: 0px 3px;
 		margin: 0;
 		color: black;
@@ -121,7 +126,7 @@ const DICT_RESULT_CSS = `
 	}
 	div#${dict_result_id} .dict-provider img {
 		border-radius: 3px;
-		transition: all 0.4s ease-in-out;
+		transition: all 0.2s ease-in-out;
 		width: 16px;
 	}
 	div#${dict_result_id} .dict-provider input ~ label img {
@@ -223,7 +228,7 @@ class DictResultView {
 		this.prefs = prefs;
 		this.addStyleSheet();
 		this.createDictResultDiv();
-		this.transEnableShown = false;
+		this.hideResult();
 	}
 
 	addStyleSheet() {
@@ -315,7 +320,8 @@ function escapeHtml(string) {
 
 class DictProvider {
 	//resultView;
-	constructor(resultView) {
+	constructor(prefs, resultView) {
+		this.prefs = prefs;
 		this.resultView = resultView;
 		let dictProvider = `<div class="dict-provider">
 				<input type="checkbox" id="enableTrans" name="enableTrans">
@@ -330,8 +336,8 @@ class DictProvider {
 }
 
 class BingDictProvider extends DictProvider {
-	constructor(resultView) {
-		super(resultView);
+	constructor(prefs, resultView) {
+		super(prefs, resultView);
 		let bingIcon = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAzUExURQyEhCOPjzGXl0Gfn1OoqF+urm61tX++vpPJyaXS0rLY2L7e3szl5dns7OXy8vP5+f///xfq9dcAAACMSURBVDjL1dPBDgIhDARQhq3bIhbm/792D4bVROjeNM6VF0rbkNK3Ar0hBk43iQHpuADtPwDyBcj1vuewRCG97FgD6STpJlgAVD7juuhCOQTmAOoxSAnaYiA1vCFbW5dwnC9gs1kXOppkldkczvjnLN+B22zUj3Hcyzbd1lb6vPgrUknX6Hdgt5x+kQNn5Q3ayatBLQAAAABJRU5ErkJggg==';
 		let dictProvider = `<div class="dict-provider">
 			<input type="checkbox" id="enableTrans" name="enableTrans"
@@ -357,6 +363,7 @@ class BingDictProvider extends DictProvider {
 		}*/
 		function parseVoiceLink(elem, id_prefix) {
 			let voiceLink;
+			let lang = id_prefix.includes('US') ? 'US' : 'UK';
 			//let voiceIcon;
 			try {
 				let linkElem = elem.childNodes[0];
@@ -371,7 +378,7 @@ class BingDictProvider extends DictProvider {
 			}
 			let id = `${id_prefix}_${Math.random()}`;
 			let speakerIcon = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABoAAAAZCAYAAAAv3j5gAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAA3XAAAN1wFCKJt4AAAAB3RJTUUH4wICACYBOBTr1QAAAvZJREFUSMed1k2IVlUYB/Dfe8dRabqS9mFiEn3ZqQxC2lQU5a6FEBE4tAhaJUqrK0HRxkWLoBNupJA2UlCuigipdtXCwCyirEsLw4omM8aak5jizNui5x1ub+/YzDxwuefc8/F//s/n7VlA+vvv0Nt9HJSctuENNDhUN+3cqDO/70vGZv8Z102r5DQ/rkYdKDnp7T6u5DRectqJ97EBD2BsIeUuXpyDFdhaclpbN+38WjUKpLNhF17BeMxvGHVmIFft+Q4ewqd4tuQ0PmBWdQE6lFeXnPZi39Bd16I3rNiQXBmK7cS2/5huwKLktB3v4fkRSm8cwagX59bG/F28hho7Sk5rYEXJqcKLuB03hS/WLGCd1SPM3C85PYVnSk731k17quR0EE/gMbyAmQrPYQ8exq2XAIHLB4wGviw5TeBJ3IhXY98JfBSstpScehW2d02wBKlKTusxi/04i0dKTtfhZ3wZ++7DWIWblwiwKgLgLnyFl/AWTsf6ZPj7+5hvGQCtWyLQxnhfj6tD4zU42mEAv+H8ICUqS5e50PjzMNEtWN8x1eZ4z+BPXIPecoDmAXEGl0XenIrvg2A6H8+ES2X5ImQlNmE6LuwNBVW/U32Wx6jk1MPdof3X+DXMB390FBnHOfSXBVQ3bR8f420crpt2OoDh23hPhFmn0V+BC4G+WPkrwKbwaDDcgHti/YNOzZvAMcxV+GmJhH4ZUUx3RahP49BQGrQDoKPL8FG3lcBhTOHpumlnSk7ronaKljFbYS9OLhJjFv1OpR/47Aju77DZgAdjfKxu2rkqqN0WBXNrZ/MoudAJ2+F2faJu2tmS0yrsiET9MJiqIoLO4WzdtF/UTTsZLXtqBNDJLlC3j3U/4fEYH6yb9vR8wtZN22186qb9BHfi+NAlZ4aBRv2j4GUcwDsLdOF/t+eS06aS05GSUz+eN0tOKxcZMFX3rmqBhNQ/sFndtD9iEq/H0jcREJeMyLhjrhudvUVqd0X8aHyGH0b45X/lb9cUC+N7uVGjAAAAAElFTkSuQmCC';
-			let voiceHTML = `<audio id="${id}" src="${voiceLink}" preload="auto"></audio>
+			let voiceHTML = `<audio id="${id}" src="${voiceLink}" preload="auto" ${self.prefs.autoplayPronuce[lang] ? 'autoplay' : ''}></audio>
 				<a onclick="javascript: document.getElementById('${id}').play()"
 					onmouseover="javascript: document.getElementById('${id}').play()">
 					<img class="audioPlayer" src="${speakerIcon}"></img>
@@ -558,7 +565,15 @@ var CurrentSelWord = '';
 class DictPrefs {
 	constructor() {
 		this.transEnabledOnPage = false;
+		this.autoplayPronuce = {
+			US: false,
+			UK: false
+		};
+		this.checkEnableTrans();
+		this.checkAutoPlay();
+
 	}
+
 	updateTransEnabledList(key, value) {
 		GM.getValue('transEnabledList', {}).then((transEnabledList) => {
 			console.log(`update ${key} => ${value} into transEnabledList`, transEnabledList);
@@ -578,12 +593,33 @@ class DictPrefs {
 				this.transEnabledOnPage = true;
 		});
 	}
+	checkAutoPlay() {
+		GM.getValue('autoplayPronuce', {}).then((autoplayPronuce) => {
+			console.log('autoplay', autoplayPronuce);
+			if (!autoplayPronuce)
+				return;
+			if (typeof autoplayPronuce === 'string')
+				GM.setValue('autoplayPronuce', {});
+			this.autoplayPronuce.US = autoplayPronuce.US;
+			this.autoplayPronuce.UK = autoplayPronuce.UK;
+			if (self == top) {
+				GM_registerMenuCommand(`Globally ${(!this.autoplayPronuce.US) ? 'En' : 'Dis'}able Autoplay US pronunciation`, () => { this.setAutoplay('US', !this.autoplayPronuce.US); });
+				GM_registerMenuCommand(`Globally ${(!this.autoplayPronuce.UK) ? 'En' : 'Dis'}able Autoplay UK pronunciation`, () => { this.setAutoplay('UK', !this.autoplayPronuce.UK); });
+			}
+		});
+	}
+	setAutoplay(lang, on) {
+		console.log(`${on ? 'en':'dis'}able auto play of ${lang} pronunciation`);
+		this.autoplayPronuce[lang] = on;
+		GM.setValue('autoplayPronuce', this.autoplayPronuce);
+		location.reload();
+	}
 }
 var dictPrefs = new DictPrefs();
-dictPrefs.checkEnableTrans();
+//dictPrefs.checkEnableTrans();
 
 var dictResultView = new DictResultView(dictPrefs);
-var bingDict = new BingDictProvider(dictResultView);
+var bingDict = new BingDictProvider(dictPrefs, dictResultView);
 
 document.addEventListener('mouseup', function (event) {
 	// click on enable/disable translation area, return, so the checkbox handler can be called
