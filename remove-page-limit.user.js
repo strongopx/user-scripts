@@ -5,23 +5,31 @@
 // @description 	Remove various page limit, check the code for the page list.
 //		quora.com: Remove login page
 //		360doc.com: Remove copy limit
+//		wenku.baidu.com: Remove copy limit
 //		baidu.com: Remove baidu calculator select limit
-// How to remove other web page's copy or select limit: 
-//		1. Add domain to @include http*://*your.domain/*
+// How to remove other web page's copy or select limit:
+//		1. Add domain to @match *://*.your.domain/*
 //		2. Add you handlers to variable `pageHandlers' below
 //		3. Modify the handlers' memebers
 // @description:zh-CN 	解除各种网页限制。网页列表，请查看源代码。
-// @version  1.4.1
-// @include    http*://*quora.com/*
-// @include    http*://*360doc.com/*
-// @include    http*://*baidu.com/*
-// @include    http*://*z3z4.com/*
-// @include    http*://*sdifen.com/*
+// 怎么移除其它网页的限制：
+//		1. 将域名加到下面：// @match *://*.your.domain/*
+//		2. 将解除类型加到 `pageHandlers' 这个数组
+//		3. 指明解除方法
+// @version  1.4.3
+// @match    *://*.quora.com/*
+// @match    *://*.360doc.com/*
+// @match    *://*.baidu.com/*
+// @match    *://*.z3z4.com/*
+// @match    *://*.sdifen.com/*
+// @match    *://*.popbee.com/*
 // @run-at   document-start
 // ==/UserScript==
 
 /*
 ChangeLog:
+v1.4.3:
+	30 Jun 2019, Try remove all limit by default, may not work for all sites.
 v1.4:
 	27 Nov 2018, Add wenku.baidu.com
 v1.3:
@@ -37,43 +45,52 @@ v1:
 
 console.log("!!!!!!!!!!!!!!!!!!!!!unlock-page!!!!!!!!!!!!!!!!!!!!!!!!");
 (function () {
-  
+
   var pageHandlers = [
     /* !!! Need to add the global match to @include also */
-    /* format:
-     *		[ /regex/, [ selector-string or node-object, event-type, event-handler, delay-ms, event-handler-parameter ] ]
+    /* Formats:
+     *		[ /domain name regex/, [ selector-string or node-object, event-type, event-handler, delay-ms-before-run-event-handle, event-handler-parameter ] ]
      *	-- or --
-     *		[ /regex/, [ selector-string or node-object, event-type, event-handler, observed-object, event-handler-parameter ] ]
-     *	-- or --
-     *		[ /regex/, [
-     *				[ selector-string or node-object, event-type, event-handler, delay or observed-object, event-handler-parameter ],
-     *				[ selector-string or node-object, event-type, event-handler, delay or observed-object, event-handler-parameter ], ]
+     *		[ /domain name regex/, [ selector-string or node-object, event-type, event-handler, observed-object-to-be-added-dynamicly-before-run-event-handle, event-handler-parameter ] ]
+     *	-- or multiple handlers for the domain, syntax similar to previous ones --
+     *		[ /domain name regex/, [
+     *				[ selector-string or node-object, event-type, event-handler, delay or observed-object before run event handler, event-handler-parameter ],
+     *				[ selector-string or node-object, event-type, event-handler, delay or observed-object before run event handler, event-handler-parameter ], ]
      *		]
+	 * Notes:
+	 * 1. empty selector-string/node-object and event-type means run immediately/after-some-delay at document-start
+	 * 2. some event does not need a node to run on, e.g. DOMContentLoaded
      */
-    [/quora\.com/, [, "DOMContentLoaded", quoraHandler, 0]],
-    [/360doc\.com/, [window, "load", enableCopyHandler, 0]],
-    [/wenku\.baidu\.com/, [
-        [, , interceptJackEvent, 0 ],
-        [window, "load", enableCopyHandler, 0, ".bd.doc-reader"],
+    [ /quora\.com/, [ /* not needed for DOMContentLoaded */, "DOMContentLoaded", quoraHandler, 0]],
+    [ /360doc\.com/, [ window, "load", enableCopyHandler, 0]],
+    [ /popbee\.com/, [ window, "load", enableCopyHandler, 0]],
+    [ /wenku\.baidu\.com/, [
+        [ , , interceptJackEvent, 0 ], /* run immediately at document-start */
+        [ window, "load", enableCopyHandler, 0, ".bd.doc-reader"],
       ]
     ],
-    [/baidu\.com/, [
-        [, "DOMContentLoaded", enableUserSelect, 0, ".op_new_cal_screen"],
-        ["#form", "submit", enableUserSelect, "body", ".op_new_cal_screen"],
+    [ /baidu\.com/, [
+        [ /* not needed for DOMContentLoaded */, "DOMContentLoaded", enableUserSelect, 0, ".op_new_cal_screen"],
+        [ "#form", "submit", enableUserSelect, "body", ".op_new_cal_screen"],
       ]
     ],
-    [/z3z4\.com/, [
-      [, , interceptJackEvent, 0],
-      [, "DOMContentLoaded", enableUserSelect, 0, "body"],]
+    [ /z3z4\.com/, [
+      [ , , interceptJackEvent, 0], /* run immediately at document-start */
+      [ /* not needed for DOMContentLoaded */, "DOMContentLoaded", enableUserSelect, 0, "body"],]
     ],
-    [/sdifen\.com/, [
-      [, , interceptJackEvent, 0],
-      [, "DOMContentLoaded", enableUserSelect, 0, "body"],
-      [window, "load", enableCopyHandler, 0],]
+    [ /sdifen\.com/, [
+      [ , , interceptJackEvent, 0], /* run immediately at document-start */
+      [ /* not needed for DOMContentLoaded */, "DOMContentLoaded", enableUserSelect, 0, "body"],
+      [ window, "load", enableCopyHandler, 0],]
+    ],
+    [ /.*/, [
+      [ , , interceptJackEvent, 0], /* run immediately at document-start */
+      [ /* not needed for DOMContentLoaded */, "DOMContentLoaded", enableUserSelect, 0, "body"],
+      [ window, "load", enableCopyHandler, 0],]
     ],
   ];
-  
-  
+
+
   function quoraHandler() {
     console.log(new Date().toLocaleString(), " ", arguments.callee.name);
     for (var d of document.body.childNodes) {
@@ -120,7 +137,7 @@ console.log("!!!!!!!!!!!!!!!!!!!!!unlock-page!!!!!!!!!!!!!!!!!!!!!!!!");
   }
   //console.log(""+injectFunction);
   injectFunction(replaceAddEventListener);
-  
+
   function interceptJackEvent() {
     var f = function setEventFilter() {
       var eventFilter = /copy|selectstart|mouseup|mousedown|contextmenu|keydown|keyup/;
@@ -135,8 +152,8 @@ console.log("!!!!!!!!!!!!!!!!!!!!!unlock-page!!!!!!!!!!!!!!!!!!!!!!!!");
       var b = document.querySelector(sel);
     else
       var b = document.body;
-    var uselattrs = [ "-webkit-touch-callout", 
-                     "-webkit-user-select", 
+    var uselattrs = [ "-webkit-touch-callout",
+                     "-webkit-user-select",
                      "-khtml-user-select",
                      "-moz-user-select",
                      "-ms-user-select",
