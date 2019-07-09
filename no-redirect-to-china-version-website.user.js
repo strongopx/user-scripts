@@ -25,7 +25,7 @@
 
 		}, 500);
 		setTimeout(() => {
-			btn = document.querySelector('#CNbanner .cn_close_btn');
+			let btn = document.querySelector('#CNbanner .cn_close_btn');
 			if (btn)
 				btn.click();
 		}, 1500);
