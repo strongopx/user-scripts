@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Do not redirect to China Version Website
 // @namespace    ATGT
-// @version      0.2
+// @version      0.3
 // @description  try to take over the world!
 // @author       You
 // @match        *://*.leetcode-cn.com/*
@@ -19,12 +19,14 @@
 		console.log('new location ', location.host);
 	} else if (/leetcode.com$/.test(location.host)) {
 		setTimeout(() => {
+			// close banner on main page
 			let btn = document.querySelector('#region_switcher .close-btn');
 			if (btn)
 				btn.click();
 
 		}, 500);
 		setTimeout(() => {
+			// close banner on problems page
 			let btn = document.querySelector('#CNbanner .cn_close_btn');
 			if (btn)
 				btn.click();
