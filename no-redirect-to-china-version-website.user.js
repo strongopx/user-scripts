@@ -18,9 +18,18 @@
 		location.host = location.host.replace(/leetcode-cn.com$/, 'leetcode.com');
 		console.log('new location ', location.host);
 	} else if (/leetcode.com$/.test(location.host)) {
-		let close_btn = document.querySelector('#region_switcher .close-btn');
-		console.log('close_btn', close_btn);
-		setTimeout(() => { close_btn.click(); }, 500);
+		setTimeout(() => {
+			let btn = document.querySelector('#region_switcher .close-btn');
+			if (btn)
+				btn.click();
+
+		}, 500);
+		setTimeout(() => {
+			btn = document.querySelector('#CNbanner .cn_close_btn');
+			if (btn)
+				btn.click();
+		}, 1500);
+
 	}
 	console.log(`=== /do not direct to china version web size ${location.host} ===`);
 })();
