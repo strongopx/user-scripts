@@ -64,15 +64,22 @@ function main_saraba1st() {
 		function scrollToPost(randIdx) {
 			let randPost = postList[randIdx];
 			randPost.scrollIntoView({behavior: "smooth", block: "nearest", inline: "nearest"});
+			let readingTime = 3000;
+			let postMsg = randPost.querySelector("[id^=postmessage_]");
+			if (postMsg) {
+				readingTime = Math.ceil(postMsg.innerText.length / 8) * 1000;
+				console.log("post msg", postMsg.innerText);
+			}
+			console.log("reading time", readingTime/1000);
 			randIdx += getRandomInt(1, 4);
 			if (randIdx < postList.length) {
-				setTimeout(scrollToPost, getRandomInt(1, 5) * 1000, randIdx);
+				setTimeout(scrollToPost, readingTime, randIdx);
 			} else {
 				document.body.scrollIntoView(true);
 				setTimeout(jumpToForum, getRandomInt(1, 5) * 1000);
 			}
 		}
-		setTimeout(scrollToPost, getRandomInt(1, 5) * 1000, randIdx);
+		setTimeout(scrollToPost, 500, randIdx);
 	}
 }
 
