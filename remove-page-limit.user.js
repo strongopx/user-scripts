@@ -16,18 +16,23 @@
 //		1. 将域名加到下面：// @match *://*.your.domain/*
 //		2. 将解除类型加到 `pageHandlers' 这个数组
 //		3. 指明解除方法
-// @version  1.4.3
+// @version  1.4.4
 // @match    *://*.quora.com/*
 // @match    *://*.360doc.com/*
 // @match    *://*.baidu.com/*
 // @match    *://*.z3z4.com/*
 // @match    *://*.sdifen.com/*
 // @match    *://*.popbee.com/*
+// @exclude    *://ditu.baidu.com/*
+// @exclude    *://map.baidu.com/*
+// @exclude    *://maps.baidu.com/*
 // @run-at   document-start
 // ==/UserScript==
 
 /*
 ChangeLog:
+v1.4.4:
+	18 Aug 2019, exclucde baidu map
 v1.4.3:
 	30 Jun 2019, Try remove all limit by default, may not work for all sites.
 v1.4:
