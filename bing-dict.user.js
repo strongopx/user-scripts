@@ -1,10 +1,10 @@
 // ==UserScript==
 // @namespace		ATGT
-// @name			Bing Dict, with pronunciation
-// @name:zh-CN	 	必应词典，带英语发音
+// @name		Bing Dict, Translate by selecting words, with pronunciation
+// @name:zh-CN	 	必应词典，划词翻译，带英语发音
 // @description		Translate selected words by Bing Dict(Dictionary support EN to CN, CN to EN), with EN pronunciation, with CN pinyin, translation is disabled by default, check the 'Bing Dict' at bottom left to enable tranlation. Auto play pronunciation can be enabled in menu.
 // @description:zh-CN	划词翻译，使用必应词典(支持英汉、汉英)，带英语发音，带中文拼音，默认不开启翻译，勾选左下角的'Bing Dict'开启翻译。自动播放发音可以通过菜单启用。
-// @version		1.4.15
+// @version		1.4.23
 // @author		StrongOp
 // @supportURL	https://github.com/strongop/user-scripts/issues
 // @match	http://*/*
@@ -26,8 +26,16 @@
 /* eslint: */
 /* global GM GM_xmlhttpRequest GM_setValue GM_getValue GM_registerMenuCommand */
 /* eslint curly: ["off", "multi", "consistent"] */
+/* eslint no-empty: "off" */
 /*
 Change Log:
+v1.4.23:
+	15 Oct 2019, Fix view removed by other script, create every time. rename names realted to enableTrans.
+v1.4.21:
+	29 Mar 2019, Icon not show correctly if auto trans enabled and previously explicit disabled.
+				CSS sucks.
+v1.4.20:
+	28 Mar 2019, Add menu for auto translation, tune icon style.
 v1.4.15:
 	16 Feb 2019, Use int max as z-index to fix overlayed in vgr.com
 v1.4.13:
@@ -81,17 +89,17 @@ const DICT_RESULT_CSS = `
 		font-size: small;
 		font-weight: normal;
 		white-space: normal;
+		margin: 0 0;
+		padding: 0 0;
 	}
 	div#${dict_result_id}-reset audio,
 	div#${dict_result_id}-reset img,
 	div#${dict_result_id}-reset input,
-	div#${dict_result_id}-reset label
-	{
+	div#${dict_result_id}-reset label {
 		display: inline-block;
 	}
 	div#${dict_result_id}-reset a,
-	div#${dict_result_id}-reset span
-	{
+	div#${dict_result_id}-reset span {
 		display: inline;
 	}
 	div#${dict_result_id} {
@@ -100,49 +108,39 @@ const DICT_RESULT_CSS = `
 		left: 2px;
 		bottom: 2px;
 		max-width: 32%;
-		min-width: 34px;
-		min-height: 34px;
 		z-index: 2147483647;
-		padding: 0px 3px;
-		margin: 0;
+		padding: 2px 2px;
+		margin: 0px 0px;
 		color: black;
 		background-color: rgba(255,255,255,0.9);
-		border-radius: 0.3em;
+		border-radius: 4px;
 	}
 	div#${dict_result_id} .margin-for-badget {
 		margin-right: 20px;
 	}
-	div#${dict_result_id} .dict-provider {
-		/*
-		float: right;
-		margin-left: 0.5rem;
-		*/
+	div#${dict_result_id} input.dict-provider {
+		display: none;
+	}
+	div#${dict_result_id} input.dict-provider ~ label img {
+		border-radius: 3px;
+		transition: all 0.2s ease-in-out;
+		width: 16px;
+		vertical-align: bottom;
+	}
+	div#${dict_result_id} input.dict-provider:not(:checked) ~ label img {
+		filter: gray; /* IE */
+		-webkit-filter: grayscale(1); /* Old WebKit */
+		-webkit-filter: grayscale(100%); /* New WebKit */
+		filter: url(resources.svg#desaturate); /* older Firefox */
+		filter: grayscale(100%); /* Current draft standard */
+	}
+	div#${dict_result_id}[data-display-mode="Result"] input.dict-provider + label img {
 		position: absolute;
 		top: 2px;
 		right: 2px;
 	}
-	div#${dict_result_id} .dict-provider * {
-		font-size: xx-small;
-	}
-	div#${dict_result_id} .dict-provider img {
-		border-radius: 3px;
-		transition: all 0.2s ease-in-out;
-		width: 16px;
-	}
-	div#${dict_result_id} .dict-provider input ~ label img {
-		opacity: 0.5;
-	}
-	div#${dict_result_id} .dict-provider input:checked ~ label img {
-		opacity: 1;
-	}
-	div#${dict_result_id} .dict-provider img:hover {
+	div#${dict_result_id} input.dict-provider ~ label img:hover {
 		width: 32px;
-	}
-	div#${dict_result_id} .dict-provider input {
-		display: none;
-		vertical-align: bottom;
-		transform: scale(0.9);
-		border: solid 1px;
 	}
 	div#${dict_result_id} .search_suggest_area ul li * {
 		font-size: x-small;
@@ -211,7 +209,7 @@ const DICT_RESULT_CSS = `
 		text-align: center;
 		padding: 0 2px;
 		margin-right: 3px;
-		border-radius: 0.2em;
+		border-radius: 3px;
 	}
 	div#${dict_result_id} a img.audioPlayer:hover {
 		opacity: 0.8;
@@ -220,25 +218,36 @@ const DICT_RESULT_CSS = `
 		width: 1em;
 		height: 1em;
 	}
+/*
+	body {
+		background: gray;
+	}
+*/
 `;
 
 class DictResultView {
 	//dictResultDiv;
 	constructor(prefs) {
 		this.prefs = prefs;
+		this.initView();
+	}
+
+	initView() {
 		this.addStyleSheet();
 		this.createDictResultDiv();
-		this.hideResult();
 	}
 
 	addStyleSheet() {
+		let cssid = `${dict_result_id}-css`;
+		if (document.querySelector(`#${cssid}`))
+			return;
 		let style = document.createElement('STYLE');
 		style.type = 'text/css';
+		style.id = cssid;
 		style.appendChild(document.createTextNode(DICT_RESULT_CSS));
 		document.head.appendChild(style);
 	}
 	createDictResultDiv() {
-		this.addStyleSheet();
 		let div_wrapper_reset = document.createElement('DIV');
 		div_wrapper_reset.id = `${dict_result_id}-reset`;
 		let div = document.createElement('DIV');
@@ -253,13 +262,25 @@ class DictResultView {
 	}
 
 	setResult(defs) {
-		this.dictResultDiv.innerHTML = this.dictProvider + defs;
+		this.dictResultDiv.innerHTML = this.dictProvider.dictProviderDesc + defs;
 		this.dictResultDiv.style.display = 'block';
-		this.showEnableTransChoice();
+		this.showEnableTransBtn();
+		if (this.prefs.isTransEnabled()) {
+			this.dictResultDiv.style.minWidth = '200px';
+			this.dictResultDiv.style.background = 'rgba(255, 255, 255, 0.9)';
+		} else {
+			this.dictResultDiv.style.minWidth = 'unset';
+			this.dictResultDiv.style.background = 'rgba(255, 255, 255, 0.6)';
+		}
+		// DO NOT DELETE, set mode to use different css rules
+		this.dictResultDiv.dataset['displayMode'] = (defs.length == 0) ? 'IconOnly' : 'Result';
 	}
 	hideResult() {
 		this.dictResultDiv.style.display = 'none';
-		this.transEnableShown = false;
+		this.enableTransBtnVisibility = false;
+		let wrapper = document.querySelector(`#${dict_result_id}-reset`);
+		if (wrapper)
+			wrapper.remove();
 	}
 
 	mouseEventInView(event) {
@@ -272,7 +293,7 @@ class DictResultView {
 	mouseEventInDictProviderBanner(event) {
 		// if Mouse is inside dict provider to enable/disable tranlation
 		try {
-			let divRect = this.dictResultDiv.querySelector(`.dict-provider`).getBoundingClientRect();
+			let divRect = this.dictResultDiv.querySelector(`.dict-provider ~ label img`).getBoundingClientRect();
 			let isInView = (event.clientX >= divRect.left && event.clientX <= divRect.right &&
 				event.clientY >= divRect.top && event.clientY <= divRect.bottom);
 			return isInView;
@@ -280,22 +301,22 @@ class DictResultView {
 			return false;
 		}
 	}
-	showEnableTransChoice() {
-		this.transEnableShown = true;
+	showEnableTransBtn() {
+		this.enableTransBtnVisibility = true;
 		let prefs = this.prefs;
 		let view = this;
-		function enableTransChoiceHandler(event) {
-			console.log('enableTransChoiceHandler called, translate enable ', event.target.checked);
-			prefs.updateTransEnabledList(location.host, !!event.target.checked);
-			prefs.transEnabledOnPage = event.target.checked;
-			if (prefs.transEnabledOnPage && CurrentSelWord.length > 0)
-				setTimeout(bingDict.search.bind(bingDict), 0, CurrentSelWord);
+		function enableTransBtnHandler(event) {
+			//console.log('enableTransChoiceHandler called, translate enable ', event.target.checked);
+			prefs.transEnabledOnPage = event.target.checked ? TRANS_EXPLICIT_ENABLE : TRANS_EXPLICIT_DISABLE;
+			prefs.updateTransEnabledList(location.host, prefs.transEnabledOnPage);
+			if (prefs.isTransEnabled() && CurrentSelWord.length > 0)
+				setTimeout(view.dictProvider.search.bind(view.dictProvider), 0, CurrentSelWord);
 			else
 				view.hideResult();
 		}
 		let enableCheckbox = document.querySelector(`div#${dict_result_id} input#enableTrans`);
-		enableCheckbox.checked = this.prefs.transEnabledOnPage;
-		enableCheckbox.onclick = enableTransChoiceHandler;
+		enableCheckbox.checked = this.prefs.transEnabledOnPage === TRANS_EXPLICIT_ENABLE;
+		enableCheckbox.onclick = enableTransBtnHandler;
 	}
 
 }
@@ -323,11 +344,11 @@ class DictProvider {
 	constructor(prefs, resultView) {
 		this.prefs = prefs;
 		this.resultView = resultView;
-		let dictProvider = `<div class="dict-provider">
-				<input type="checkbox" id="enableTrans" name="enableTrans">
+		this.dictProviderDesc = `
+				<input type="checkbox" id="enableTrans" class="dict-provider" name="enableTrans">
 				<label for="enableTrans">No Dict Provider</label>
-			</div>`;
-		this.resultView.setProvider(dictProvider);
+			`;
+		this.resultView.setProvider(this);
 	}
 	search(word) {
 		console.log(`base DictProvider::search ${word}`);
@@ -339,19 +360,16 @@ class BingDictProvider extends DictProvider {
 	constructor(prefs, resultView) {
 		super(prefs, resultView);
 		let bingIcon = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAzUExURQyEhCOPjzGXl0Gfn1OoqF+urm61tX++vpPJyaXS0rLY2L7e3szl5dns7OXy8vP5+f///xfq9dcAAACMSURBVDjL1dPBDgIhDARQhq3bIhbm/792D4bVROjeNM6VF0rbkNK3Ar0hBk43iQHpuADtPwDyBcj1vuewRCG97FgD6STpJlgAVD7juuhCOQTmAOoxSAnaYiA1vCFbW5dwnC9gs1kXOppkldkczvjnLN+B22zUj3Hcyzbd1lb6vPgrUknX6Hdgt5x+kQNn5Q3ayatBLQAAAABJRU5ErkJggg==';
-		let dictProvider = `<div class="dict-provider">
-			<input type="checkbox" id="enableTrans" name="enableTrans"
-				title="Click to enable/disable translation with Bing Dict" >
-			<label for="enableTrans">
-				<img src='${bingIcon}' alt='Bing Dict' title="Click to enable/disable translation with Bing Dict">
-			</label>
-			</div>`;
-		this.resultView.setProvider(dictProvider);
+		this.dictProviderDesc = `
+			<input type="checkbox" id="enableTrans" class="dict-provider" name="enableTrans"
+				title="Click to enable/disable translation with Bing Dict" ><label for="enableTrans"><img src='${bingIcon}' alt='Bing Dict' title="Click to enable/disable translation with Bing Dict"></label>
+			`;
+		this.resultView.setProvider(this);
 		this.baseURL = 'https://www.bing.com/';
 	}
 
 	search(word) {
-		console.log(`>>> do search ${word}`);
+		//console.log(`>>> do search ${word}`);
 		let self = this;
 		function limitedSearchString(headword) {
 			return `${headword.substring(0, 77)}${(headword.length >= 77) ? '...' : ''}`;
@@ -406,7 +424,8 @@ class BingDictProvider extends DictProvider {
 			try {
 				headword = escapeHtml(hd_area.querySelector('#headword').innerText);
 				pronuce = parsePronuce(hd_area.querySelector('.hd_tf_lh'));
-			} catch (e) { }
+			} catch (e) {
+			}
 
 
 			headword = `<div class='headword'>
@@ -561,17 +580,25 @@ class BingDictProvider extends DictProvider {
 }
 
 var CurrentSelWord = '';
+const TRANS_EXPLICIT_NONE = 0;
+const TRANS_EXPLICIT_DISABLE = 1;
+const TRANS_EXPLICIT_ENABLE = 2;
 
 class DictPrefs {
 	constructor() {
-		this.transEnabledOnPage = false;
+		this.transEnabledOnPage = TRANS_EXPLICIT_NONE;
+		this.globallyEnableAutoTrans = true;
 		this.autoplayPronuce = {
 			US: false,
 			UK: false
 		};
 		this.checkEnableTrans();
 		this.checkAutoPlay();
+	}
 
+	isTransEnabled() {
+		return (this.transEnabledOnPage !== TRANS_EXPLICIT_DISABLE) &&
+			(this.transEnabledOnPage === TRANS_EXPLICIT_ENABLE || this.globallyEnableAutoTrans);
 	}
 
 	updateTransEnabledList(key, value) {
@@ -583,15 +610,34 @@ class DictPrefs {
 		});
 	}
 	checkEnableTrans() {
+		GM.getValue('globallyEnableAutoTrans', {}).then((globallyEnableAutoTrans) => {
+			console.log('globallyEnableAutoTrans', globallyEnableAutoTrans);
+			if (typeof globallyEnableAutoTrans === 'undefined')
+				return;
+			if (typeof globallyEnableAutoTrans === 'string')
+				GM.setValue('globallyEnableAutoTrans', true);
+			this.globallyEnableAutoTrans = globallyEnableAutoTrans;
+			GM_registerMenuCommand(`Globally ${(!this.globallyEnableAutoTrans) ? 'En' : 'Dis'}able Auto Translation. (Currently ${this.globallyEnableAutoTrans ? 'En' : 'Dis'}abled)`, () => { this.setAutoTranslate(!this.globallyEnableAutoTrans); });
+		});
 		GM.getValue('transEnabledList', {}).then((transEnabledList) => {
 			console.log('transEnabledList', transEnabledList);
-			if (!transEnabledList)
+			if (typeof transEnabledList === 'undefined')
 				return;
 			if (typeof transEnabledList === 'string')
 				GM.setValue('transEnabledList', {});
-			if (transEnabledList[location.host] === true)
-				this.transEnabledOnPage = true;
+			if (location.host in transEnabledList) {
+				this.transEnabledOnPage = transEnabledList[location.host];
+				if (typeof this.transEnabledOnPage === 'boolean') {
+					this.transEnabledOnPage = this.transEnabledOnPage === true ? TRANS_EXPLICIT_ENABLE : TRANS_EXPLICIT_DISABLE;
+					this.updateTransEnabledList(location.host, this.transEnabledOnPage);
+				}
+			}
 		});
+	}
+	setAutoTranslate(en) {
+		this.globallyEnableAutoTrans = en;
+		GM.setValue('globallyEnableAutoTrans', en);
+		location.reload();
 	}
 	checkAutoPlay() {
 		GM.getValue('autoplayPronuce', {}).then((autoplayPronuce) => {
@@ -603,13 +649,13 @@ class DictPrefs {
 			this.autoplayPronuce.US = autoplayPronuce.US;
 			this.autoplayPronuce.UK = autoplayPronuce.UK;
 			if (self == top) {
-				GM_registerMenuCommand(`Globally ${(!this.autoplayPronuce.US) ? 'En' : 'Dis'}able Autoplay US pronunciation`, () => { this.setAutoplay('US', !this.autoplayPronuce.US); });
-				GM_registerMenuCommand(`Globally ${(!this.autoplayPronuce.UK) ? 'En' : 'Dis'}able Autoplay UK pronunciation`, () => { this.setAutoplay('UK', !this.autoplayPronuce.UK); });
+				GM_registerMenuCommand(`Globally ${(!this.autoplayPronuce.US) ? 'En' : 'Dis'}able Autoplay US pronunciation. (Currently ${this.autoplayPronuce.US ? 'En' : 'Dis'}abled)`, () => { this.setAutoplay('US', !this.autoplayPronuce.US); });
+				GM_registerMenuCommand(`Globally ${(!this.autoplayPronuce.UK) ? 'En' : 'Dis'}able Autoplay UK pronunciation. (Currently ${this.autoplayPronuce.UK ? 'En' : 'Dis'}abled)`, () => { this.setAutoplay('UK', !this.autoplayPronuce.UK); });
 			}
 		});
 	}
 	setAutoplay(lang, on) {
-		console.log(`${on ? 'en':'dis'}able auto play of ${lang} pronunciation`);
+		console.log(`${on ? 'en' : 'dis'}able auto play of ${lang} pronunciation`);
 		this.autoplayPronuce[lang] = on;
 		GM.setValue('autoplayPronuce', this.autoplayPronuce);
 		location.reload();
@@ -622,6 +668,9 @@ var dictResultView = new DictResultView(dictPrefs);
 var bingDict = new BingDictProvider(dictPrefs, dictResultView);
 
 document.addEventListener('mouseup', function (event) {
+	if (!document.querySelector(`#${dict_result_id}`)) {
+		dictResultView.initView();
+	}
 	// click on enable/disable translation area, return, so the checkbox handler can be called
 	if (dictResultView.mouseEventInDictProviderBanner(event))
 		return;
@@ -637,8 +686,8 @@ document.addEventListener('mouseup', function (event) {
 	}
 
 	// show enable translate option if not enabled
-	if (!dictPrefs.transEnabledOnPage) {
-		if (!dictResultView.transEnableShown)
+	if (!dictPrefs.isTransEnabled()) {
+		if (!dictResultView.enableTransBtnVisibility)
 			dictResultView.setResult('');
 		console.log('translate not enabled.');
 		return;
