@@ -1,26 +1,25 @@
 // ==UserScript==
 // @namespace ATGT
 // @name     remove page limit
-// @name:zh-CN     解除网页限制
-// @description   Remove various page limit, check the code for the page list.
+// @name:zh-CN     解除网页限制，网站列表请看代码，也可以添加自定义网站
+// @description   Remove various page limit, check the code for website list, or add other websites
 //    quora.com: Remove login page
-//    360doc.com: Remove copy limit
-//    wenku.baidu.com: Remove copy limit
-//    baidu.com: Remove baidu calculator select limit
+//    other domains: Remove copy or select limit
 // How to remove other web page's copy or select limit:
 //    1. Add domain to @match *://*.your.domain/*
-//    2. Add you handlers to variable `pageHandlers' below
-//    3. Modify the handlers' memebers
+//    2. (Optional): Add your unlock handlers to variable `unlockPageHandlers' below
 // @description:zh-CN   解除各种网页限制。网页列表，请查看源代码。
+//    quora.com: 移除登录页面
+//    其它网站：解除选择和复制限制
 // 怎么移除其它网页的限制：
-//    1. 将域名加到下面：// @match *://*.your.domain/*
-//    2. 将解除类型加到 `pageHandlers' 这个数组
-//    3. 指明解除方法
-// @version  1.4.5
+//    1. 将域名加到 @match，格式如下：
+//        // @match *://*.your.domain/*
+//    2. （可选）：将解除方法加到 `unlockPageHandlers' 这个数组
+//
+// @version  1.4.6
 // @match    *://*.quora.com/*
 // @match    *://*.360doc.com/*
 // @match    *://*.baidu.com/*
-// @match    *://*.z3z4.com/*
 // @match    *://*.sdifen.com/*
 // @match    *://*.popbee.com/*
 // @exclude    *://pan.baidu.com/*
@@ -32,6 +31,8 @@
 
 /*
 ChangeLog:
+v1.4.6:
+  16 Oct 2019, remove dead site, merge baidu handlers
 v1.4.5:
   15 Oct 2019, skip hijack baidu login verify page
 v1.4.4:
@@ -51,10 +52,9 @@ v1:
 
 */
 
-console.log('!!!!!!!!!!!!!!!!!!!!!unlock-page!!!!!!!!!!!!!!!!!!!!!!!!');
+console.log(`=== unlock-page ${location.href} ===`);
 (function () {
-
-	var pageHandlers = [
+	var unlockPageHandlers = [
 		/* !!! Need to add the global match to @include also */
 		/* Formats:
 		 *    [ /domain name regex/, [ selector-string or node-object, event-type, event-handler, delay-ms-before-run-event-handle, event-handler-parameter ] ]
@@ -65,43 +65,52 @@ console.log('!!!!!!!!!!!!!!!!!!!!!unlock-page!!!!!!!!!!!!!!!!!!!!!!!!');
 		 *        [ selector-string or node-object, event-type, event-handler, delay or observed-object before run event handler, event-handler-parameter ],
 		 *        [ selector-string or node-object, event-type, event-handler, delay or observed-object before run event handler, event-handler-parameter ], ]
 		 *    ]
-	   * Notes:
-	   * 1. empty selector-string/node-object and event-type means run immediately/after-some-delay at document-start
-	   * 2. some event does not need a node to run on, e.g. DOMContentLoaded
+		 * Notes:
+		 * 1. empty selector-string/node-object and event-type means run immediately/after-some-delay at document-start
+		 * 2. some event does not need a node to run on, e.g. DOMContentLoaded
 		 */
-		[/quora\.com/, [ /* not needed for DOMContentLoaded */, 'DOMContentLoaded', quoraHandler, 0]],
-		[/360doc\.com/, [window, 'load', enableCopyHandler, 0]],
-		[/popbee\.com/, [window, 'load', enableCopyHandler, 0]],
-		[/wenku\.baidu\.com/, [
-			[, , interceptJackEvent, 0, '.vcode-body'], /* run immediately at document-start */
-			[window, 'load', enableCopyHandler, 0, '.bd.doc-reader'],
-		]
+		[
+			/quora\.com/,
+			[ /* not needed for event DOMContentLoaded */, 'DOMContentLoaded', quoraHandler, 0 ]
 		],
-		[/^https?:\/\/(www\.)?baidu\.com/, [
-			[, , interceptJackEvent, 0, '.vcode-body'], /* run immediately at document-start */
-			[ /* not needed for DOMContentLoaded */, 'DOMContentLoaded', enableUserSelect, 0, '.op_new_cal_screen'],
-			['#form', 'submit', enableUserSelect, 'body', '.op_new_cal_screen'],
-		]
+		[
+			/360doc\.com/,
+			[ window, 'load', enableCopyHandler, 0 ]
 		],
-		[/^https?:\/\/([^/?&#%]*\.)?baidu\.com/, [
-			[, , interceptJackEvent, 0, '.vcode-body'], /* run immediately at document-start */
-			[ /* not needed for DOMContentLoaded */, 'DOMContentLoaded', enableUserSelect, 0, '.op_new_cal_screen'],
-			['#form', 'submit', enableUserSelect, 'body', '.op_new_cal_screen'],
-		]
+		[
+			/popbee\.com/,
+			[ window, 'load', enableCopyHandler, 0 ]
 		],
-		[/z3z4\.com/, [
-			[, , interceptJackEvent, 0], /* run immediately at document-start */
-			[ /* not needed for DOMContentLoaded */, 'DOMContentLoaded', enableUserSelect, 0, 'body'],]
+		[
+			/wenku\.baidu\.com/,
+			[
+				[ , , interceptJackEvent, 0 ], /* no selector/node and no event means run immediately at document-start */
+				[ window, 'load', enableCopyHandler, 0, '.bd.doc-reader' ],
+			]
 		],
-		[/sdifen\.com/, [
-			[, , interceptJackEvent, 0], /* run immediately at document-start */
-			[ /* not needed for DOMContentLoaded */, 'DOMContentLoaded', enableUserSelect, 0, 'body'],
-			[window, 'load', enableCopyHandler, 0],]
+		[
+			/^https?:\/\/([^/?&#%]*\.)?baidu\.com/,  // <=> http*://*.baidu.com
+			[
+				[ , , interceptJackEvent, 0, '.vcode-body' ],
+				[ , 'DOMContentLoaded', enableUserSelect, 0, 'body' ],
+				[ window, 'load', enableCopyHandler, 0 ],
+			]
 		],
-		[/.*/, [
-			[, , interceptJackEvent, 0], /* run immediately at document-start */
-			[ /* not needed for DOMContentLoaded */, 'DOMContentLoaded', enableUserSelect, 0, 'body'],
-			[window, 'load', enableCopyHandler, 0],]
+		[
+			/sdifen\.com/,
+			[
+				[ , , interceptJackEvent, 0 ],
+				[ , 'DOMContentLoaded', enableUserSelect, 0, 'body' ],
+				[ window, 'load', enableCopyHandler, 0 ],
+			]
+		],
+		[
+			/.*/, 
+			[
+				[ , , interceptJackEvent, 0 ],
+				[ , 'DOMContentLoaded', enableUserSelect, 0, 'body' ],
+				[ window, 'load', enableCopyHandler, 0 ],
+			]
 		],
 	];
 
@@ -292,7 +301,7 @@ console.log('!!!!!!!!!!!!!!!!!!!!!unlock-page!!!!!!!!!!!!!!!!!!!!!!!!');
 		}
 	}
 
-	for (var ph of pageHandlers) {
+	for (var ph of unlockPageHandlers) {
 		var url = ph[0];
 		if (url.test(location.href)) {
 			var info_list = ph[1];
@@ -316,4 +325,4 @@ console.log('!!!!!!!!!!!!!!!!!!!!!unlock-page!!!!!!!!!!!!!!!!!!!!!!!!');
 	}
 })();
 
-console.log('!!!!!!!!!!!!!!!!!!!!!/unlock-page!!!!!!!!!!!!!!!!!!!!!!!!');
+console.log(`=== /unlock-page ${location.href} ===`);
