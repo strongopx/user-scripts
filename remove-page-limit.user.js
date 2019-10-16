@@ -8,7 +8,7 @@
 // How to remove other web page's copy or select limit:
 //    1. Add domain to @match *://*.your.domain/*
 //    2. (Optional): Add your unlock handlers to variable `unlockPageHandlers' below
-// @description:zh-CN   解除各种网页限制。网页列表，请查看源代码。
+// @description:zh-CN   解除各种网页限制，网站列表请看代码，也可以添加自定义网站
 //    quora.com: 移除登录页面
 //    其它网站：解除选择和复制限制
 // 怎么移除其它网页的限制：
