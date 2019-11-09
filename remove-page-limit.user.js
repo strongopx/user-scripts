@@ -14,14 +14,15 @@
 // 怎么移除其它网页的限制：
 //    1. 将域名加到 @match，格式如下：
 //        // @match *://*.your.domain/*
-//    2. （可选）：将解除方法加到 `unlockPageHandlers' 这个数组
+//    2. （可选）：将解除限制的方法加到 `unlockPageHandlers' 这个数组
 //
-// @version  1.4.6
+// @version  1.4.7
 // @match    *://*.quora.com/*
 // @match    *://*.360doc.com/*
 // @match    *://*.baidu.com/*
 // @match    *://*.sdifen.com/*
 // @match    *://*.popbee.com/*
+// @match    *://*.baikemy.com/*
 // @exclude    *://pan.baidu.com/*
 // @exclude    *://ditu.baidu.com/*
 // @exclude    *://map.baidu.com/*
@@ -31,6 +32,9 @@
 
 /*
 ChangeLog:
+v1.4.7:
+  9 Nov 2019, Enable user select by css rules on '*' selector,
+              Match baikemy.com
 v1.4.6:
   16 Oct 2019, remove dead site, merge baidu handlers
 v1.4.5:
@@ -68,48 +72,49 @@ console.log(`=== unlock-page ${location.href} ===`);
 		 * Notes:
 		 * 1. empty selector-string/node-object and event-type means run immediately/after-some-delay at document-start
 		 * 2. some event does not need a node to run on, e.g. DOMContentLoaded
+		 * 3. DOMContentLoaded is trigger before window's load event, since window's load event will trigger after external script/resource are loaded.
 		 */
 		[
 			/quora\.com/,
-			[ /* not needed for event DOMContentLoaded */, 'DOMContentLoaded', quoraHandler, 0 ]
+			[ /* not needed for event DOMContentLoaded */, 'DOMContentLoaded', quoraHandler, 0]
 		],
 		[
 			/360doc\.com/,
-			[ window, 'load', enableCopyHandler, 0 ]
+			[window, 'load', enableCopyHandler, 0]
 		],
 		[
 			/popbee\.com/,
-			[ window, 'load', enableCopyHandler, 0 ]
+			[window, 'load', enableCopyHandler, 0]
 		],
 		[
 			/wenku\.baidu\.com/,
 			[
-				[ , , interceptJackEvent, 0 ], /* no selector/node and no event means run immediately at document-start */
-				[ window, 'load', enableCopyHandler, 0, '.bd.doc-reader' ],
+				[, , interceptJackEvent, 0], /* no selector/node and no event means run immediately at document-start */
+				[window, 'load', enableCopyHandler, 0, '.bd.doc-reader'],
 			]
 		],
 		[
 			/^https?:\/\/([^/?&#%]*\.)?baidu\.com/,  // <=> http*://*.baidu.com
 			[
-				[ , , interceptJackEvent, 0, '.vcode-body' ],
-				[ , 'DOMContentLoaded', enableUserSelect, 0, 'body' ],
-				[ window, 'load', enableCopyHandler, 0 ],
+				[, , interceptJackEvent, 0, '.vcode-body'],
+				[, 'DOMContentLoaded', enableUserSelect, 0, 'body'],
+				[window, 'load', enableCopyHandler, 0],
 			]
 		],
 		[
 			/sdifen\.com/,
 			[
-				[ , , interceptJackEvent, 0 ],
-				[ , 'DOMContentLoaded', enableUserSelect, 0, 'body' ],
-				[ window, 'load', enableCopyHandler, 0 ],
+				[, , interceptJackEvent, 0],
+				[, 'DOMContentLoaded', enableUserSelect, 0, 'body'],
+				[window, 'load', enableCopyHandler, 0],
 			]
 		],
 		[
-			/.*/, 
+			/.*/,
 			[
-				[ , , interceptJackEvent, 0 ],
-				[ , 'DOMContentLoaded', enableUserSelect, 0, 'body' ],
-				[ window, 'load', enableCopyHandler, 0 ],
+				[, , interceptJackEvent, 0],
+				[, 'DOMContentLoaded', enableUserSelect, 0, 'body'],
+				[window, 'load', enableCopyHandler, 0],
 			]
 		],
 	];
@@ -182,7 +187,16 @@ console.log(`=== unlock-page ${location.href} ===`);
 		f = f.toString().replace('__noHijackNodes__', noHijackNodes);
 		injectFunction(f);
 	}
-
+	function addStyleSheet(cssContent) {
+		let cssid = `ATGT-remove-page-limit-css`;
+		if (document.querySelector(`#${cssid}`))
+			return;
+		let style = document.createElement('STYLE');
+		style.type = 'text/css';
+		style.id = cssid;
+		style.appendChild(document.createTextNode(cssContent));
+		document.head.appendChild(style);
+	}
 	function enableUserSelect(sel) {
 		console.log('enableUserSelect ', sel);
 		var b = document.body;
@@ -205,21 +219,39 @@ console.log(`=== unlock-page ${location.href} ===`);
 				console.log(e);
 			}
 		}
+		console.log('add css rule to enable user select');
+		addStyleSheet(`
+			* {
+				user-select: unset!important;
+			}`);
 	}
 
 	function enableCopyHandler(sel) {
-		var body = document.body;
+		var body = document.body || document.querySelector('body');
 		var doc = document;
-		console.log(new Date().toLocaleString(), ' ', arguments.callee.name, body.oncopy, doc.oncopy);
+		console.log('enableCopyHandler', new Date().toLocaleString(), ' ', arguments.callee.name, body.oncopy, doc.oncopy);
 		function replaceUserHandlers(n) {
-			n.onclick = n.oncontextmenu = n.oncopy =
-				n.onmouseup = n.onmousedown = n.onselectstart = null;
+			if (!n)
+				return;
+			if (n.onclick)
+				n.onclick = null;
+			if (n.oncontextmenu)
+				n.oncontextmenu = null;
+			if (n.oncopy)
+				n.oncopy = null;
+			if (n.onmouseup)
+				n.onmouseup = null;
+			if (n.onmousedown)
+				n.onmousedown = null;
+			if (n.onselectstart)
+				n.onselectstart = null;
 		}
+		//console.log('body', body);
 		replaceUserHandlers(body);
 		replaceUserHandlers(doc);
 		var node = document.querySelector(sel);
 		//for (var n of nodes)
-		console.log(sel, '=>', node);
+		console.log('sel', sel, '=>', node);
 		replaceUserHandlers(node);
 	}
 
