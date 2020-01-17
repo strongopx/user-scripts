@@ -4,7 +4,7 @@
 // @name:zh-CN	 	必应词典，划词翻译，带英语发音
 // @description		Translate selected words by Bing Dict(Dictionary support EN to CN, CN to EN), with EN pronunciation, with CN pinyin, translation is disabled by default, check the 'Bing Dict' at bottom left to enable tranlation. Auto play pronunciation can be enabled in menu.
 // @description:zh-CN	划词翻译，使用必应词典(支持英汉、汉英)，带英语发音，带中文拼音，默认不开启翻译，勾选左下角的'Bing Dict'开启翻译。自动播放发音可以通过菜单启用。
-// @version		1.4.23
+// @version		1.4.25
 // @author		StrongOp
 // @supportURL	https://github.com/strongop/user-scripts/issues
 // @match	http://*/*
@@ -19,6 +19,7 @@
 // @grant	GM_getValue
 // @grant	GM_registerMenuCommand
 // @connect	www.bing.com
+// @connect	cn.bing.com
 // @icon	https://www.bing.com/favicon.ico
 // @run-at	document-end
 // ==/UserScript==
@@ -111,8 +112,8 @@ const DICT_RESULT_CSS = `
 		z-index: 2147483647;
 		padding: 2px 2px;
 		margin: 0px 0px;
-		color: black;
-		background-color: rgba(255,255,255,0.9);
+		color: silver !important;
+		background-color: rgba(255,255,255,0.9) !important;
 		border-radius: 4px;
 	}
 	div#${dict_result_id} .margin-for-badget {
@@ -201,6 +202,7 @@ const DICT_RESULT_CSS = `
 	}
 	div#${dict_result_id} ul li{
 		margin-top: 1px;
+		color: gray;
 	}
 	div#${dict_result_id} ul li span.def-category {
 		float:left;
@@ -267,10 +269,10 @@ class DictResultView {
 		this.showEnableTransBtn();
 		if (this.prefs.isTransEnabled()) {
 			this.dictResultDiv.style.minWidth = '200px';
-			this.dictResultDiv.style.background = 'rgba(255, 255, 255, 0.9)';
+			this.dictResultDiv.style.background = 'rgba(255, 255, 255, 0.9) !important';
 		} else {
 			this.dictResultDiv.style.minWidth = 'unset';
-			this.dictResultDiv.style.background = 'rgba(255, 255, 255, 0.6)';
+			this.dictResultDiv.style.background = 'rgba(255, 255, 255, 0.6) !important';
 		}
 		// DO NOT DELETE, set mode to use different css rules
 		this.dictResultDiv.dataset['displayMode'] = (defs.length == 0) ? 'IconOnly' : 'Result';
@@ -365,7 +367,7 @@ class BingDictProvider extends DictProvider {
 				title="Click to enable/disable translation with Bing Dict" ><label for="enableTrans"><img src='${bingIcon}' alt='Bing Dict' title="Click to enable/disable translation with Bing Dict"></label>
 			`;
 		this.resultView.setProvider(this);
-		this.baseURL = 'https://www.bing.com/';
+		this.baseURL = 'https://cn.bing.com/';
 	}
 
 	search(word) {
@@ -479,7 +481,7 @@ class BingDictProvider extends DictProvider {
 				let r0 = s.childNodes[0];
 				let r1 = s.childNodes[1];
 				defs += `<li>
-						<a class='suggest_word' href='//www.bing.com${r0.pathname}${r0.search}' target='_blank'>
+						<a class='suggest_word' href='//cn.bing.com${r0.pathname}${r0.search}' target='_blank'>
 							${escapeHtml(r0.innerText)}</a>
 						<span>${escapeHtml(r1.innerText)}<span>
 					</li>`;
@@ -520,7 +522,7 @@ class BingDictProvider extends DictProvider {
 		}
 
 		const FAILURE_MSG = `<span class='margin-for-badget'>No result for '${escapeHtml(limitedSearchString(word))}'.<span><br />
-							Try <a href='https://www.bing.com/translator' target='_blank'>Microsoft Translator</a>.`;
+							Try <a href='https://cn.bing.com/translator' target='_blank'>Microsoft Translator</a>.`;
 
 		function parseDictResult(word, response) {
 			//console.log('search dict ok', response);
@@ -561,7 +563,7 @@ class BingDictProvider extends DictProvider {
 			} else {
 				//console.log('cache miss');
 			}
-			let url = 'http://www.bing.com/dict/search?q=' + encodeURIComponent(word);
+			let url = 'http://cn.bing.com/dict/search?q=' + encodeURIComponent(word);
 			console.log(url);
 			self.resultView.setResult(`Searching <span class='headword'>
 					<a href='${url}' target='_blank'>${escapeHtml(limitedSearchString(word))}</a>
