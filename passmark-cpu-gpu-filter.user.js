@@ -3,6 +3,7 @@
 // @version  2
 // @match    https://www.cpubenchmark.net/cpu_lookup.php*
 // @match    https://www.cpubenchmark.net/*_cpus.html*
+// @match    https://www.videocardbenchmark.net/video_lookup.php*
 // @match    https://www.videocardbenchmark.net/*_gpus.html
 // @grant    none
 // @icon     https://www.cpubenchmark.net/favicon.ico
