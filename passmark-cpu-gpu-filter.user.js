@@ -1,6 +1,9 @@
 // ==UserScript==
+// @namespace  ATGT
 // @name     Passmark CPU/GPU Filter
 // @version  2
+// @description  Passmark CPU/GPU Filter by Brand, Model or Inputed Text
+// @author   StrongOpx
 // @match    https://www.cpubenchmark.net/cpu_lookup.php*
 // @match    https://www.cpubenchmark.net/*_cpus.html*
 // @match    https://www.videocardbenchmark.net/video_lookup.php*
@@ -68,7 +71,7 @@ function gen_filter_toolbar(toolbar, filter_map) {
 		tool.attributes['active'] = active;
 		let display = active ? 'block' : 'none';
 		for (let node of tool.attributes['map']) {
-			console.log('node of map ', node);
+			//console.log('node of map ', node);
 			node.style.display = display;
 		}
 		tool.style.backgroundColor = active ? active_bg_color : inactive_bg_color;
@@ -84,6 +87,7 @@ function gen_filter_toolbar(toolbar, filter_map) {
 	}
 
 	let container = document.createElement('DIV');
+	container.className = 'filter_container';
 	container.style.borderTop = 'dotted 6px white';
 	container.style.textAlign = 'left';
 	toolbar.appendChild(container);
@@ -115,6 +119,29 @@ function gen_filter_toolbar(toolbar, filter_map) {
 			node.className = 'filter_tool filter_all';
 		container.appendChild(node);
 	}
+	return container;
+}
+
+function gen_input_filter(header, all_cpu_map) {
+	function update_filter(e) {
+		let flt = e.target.value;
+		try {
+      flt = flt.replace(/\s+/, '.*');
+			let regex = new RegExp(flt, 'i');
+			let products = all_cpu_map[Object.keys(all_cpu_map)[0]]['products'];
+			for (let node of products) {
+				node.style.display = regex.test(node.innerText) ? 'block' : 'none';
+			}
+		} catch (e) {
+			console.log('update filter for input error', e);
+		}
+	}
+	let input = document.createElement('INPUT');
+	input.type = 'text';
+	input.style.margin = '2px 4px 6px 4px';
+	input.style.width = '90%';
+	input.addEventListener('input', update_filter);
+	header.appendChild(input);
 }
 
 function create_filter_toolbar() {
@@ -130,18 +157,21 @@ function create_filter_toolbar() {
 	toolbar.style.zIndex = '10000';
 	toolbar.style.fontSize = 'small';
 	toolbar.style.padding = '4px';
-	toolbar.style.maxWidth = '11rem';
+	toolbar.style.maxWidth = '10rem';
 	toolbar.style.maxHeight = '80%';
-	toolbar.style.overflowY = 'scroll';
+	//toolbar.style.overflowY = 'scroll';
 
 	function fold_filters(event) {
 		console.log('Fold Filters');
 		let target = event.target;
 		target.attributes['fold'] = !target.attributes['fold'];
-		for (let node of document.querySelectorAll('.filter_tool')) {
+		for (let node of document.querySelectorAll('.filter_container')) {
 			node.style.display = target.attributes['fold'] ? 'none' : 'block';
 		}
 	}
+
+	let header_sub_div = document.createElement('DIV');
+	toolbar.appendChild(header_sub_div);
 
 	let label = document.createElement('DIV');
 	label.innerHTML = 'FILTERS';
@@ -154,10 +184,18 @@ function create_filter_toolbar() {
 	label.style.background = 'white';
 	label.attributes['fold'] = false;
 	label.onclick = fold_filters;
-	toolbar.appendChild(label);
+	header_sub_div.appendChild(label);
+
+	let tool_sub_div = document.createElement('DIV');
+	tool_sub_div.className = 'filter_container';
+	tool_sub_div.style.maxWidth = '100%';
+	tool_sub_div.style.maxHeight = '30rem';
+	tool_sub_div.style.overflowY = 'scroll';
+	toolbar.appendChild(tool_sub_div);
+
 	document.body.appendChild(toolbar);
 
-	return toolbar;
+	return [header_sub_div, tool_sub_div];
 }
 
 function filter_cpus() {
@@ -165,7 +203,7 @@ function filter_cpus() {
 		return;
 	}
 
-	let toolbar = create_filter_toolbar();
+	let [header, tools] = create_filter_toolbar();
 
 	let all_cpu_map = {
 		'.*': {}
@@ -179,57 +217,17 @@ function filter_cpus() {
 		'AMD': {},
 	};
 
-	/*
-	let intel_cpu_map = {
-		'Atom': {},
-		'Celeron': {},
-		'Core\\s+i3': {},
-		'Core\\s+i5': {},
-		//'Core\\s+i7': {},
-		//'Core\\s+i9': {},
-		'Core': {},
-		'Pentium': {},
-
-		//'Xeon\\s+X': {},
-		'Xeon\\s+D': {},
-		'Xeon\\s+E3': {},
-		'Xeon\\s+E5': {},
-		'Xeon\\s+W': {},
-		'Xeon\\s+Silver': {},
-		'Xeon\\s+Gold': {},
-		//'Xeon\\s+Platinum': {},
-
-		'Xeon': {},
-	};
-
-  let amd_cpu_map = {
-		'Athlon': {},
-
-		'FX': {},
-
-		'Opteron': {},
-
-		'Ryzen\\s+3': {},
-		'Ryzen\\s+5': {},
-		'Ryzen\\s+7': {},
-
-		'EPYC\\s+3': {},
-		'EPYC\\s+7': {},
-		'Threadripper': {},
-	};
-  */
-
-
 	gen_filter_map(all_cpu_map);
-	gen_filter_toolbar(toolbar, all_cpu_map);
+	let container = gen_filter_toolbar(header, all_cpu_map);
+	gen_input_filter(container, all_cpu_map);
 
 	gen_filter_keyword('(Intel\\s+(?:[a-zA-Z]+\\s+)(?:[a-zA-Z][\\d-]|\\d|[a-zA-Z]{2,}))', intel_cpu_map);
 	gen_filter_map(intel_cpu_map);
-	gen_filter_toolbar(toolbar, intel_cpu_map);
+	gen_filter_toolbar(tools, intel_cpu_map);
 
 	gen_filter_keyword('(AMD\\s+(?:[a-zA-Z]+\\s+)(?:[a-zA-Z][\\d-]|\\d|[a-zA-Z]{2,}))', amd_cpu_map);
 	gen_filter_map(amd_cpu_map);
-	gen_filter_toolbar(toolbar, amd_cpu_map);
+	gen_filter_toolbar(tools, amd_cpu_map);
 
 	/*
   for (let k of Object.keys(cpu_map)) {
@@ -244,7 +242,7 @@ function filter_gpus() {
 		return;
 	}
 
-	let toolbar = create_filter_toolbar();
+	let [header, tools] = create_filter_toolbar();
 
 	let all_gpu_map = {
 		'.*': {}
@@ -260,19 +258,20 @@ function filter_gpus() {
 	};
 
 	gen_filter_map(all_gpu_map);
-	gen_filter_toolbar(toolbar, all_gpu_map);
+	let container = gen_filter_toolbar(header, all_gpu_map);
+	gen_input_filter(container, all_gpu_map);
 
 	gen_filter_keyword('((?:Intel)\\s+(?:[a-zA-Z]+\\s+)?(?:[a-zA-Z][\\d-]|\\d|[a-zA-Z]{2,}))', intel_gpu_map);
 	gen_filter_map(intel_gpu_map);
-	gen_filter_toolbar(toolbar, intel_gpu_map);
+	gen_filter_toolbar(tools, intel_gpu_map);
 
 	gen_filter_keyword('((?:Nvidia|Geforce|TITAN|Quadro|Tesla)\\s+(?:[a-zA-Z]+\\s+)?(?:[a-zA-Z][\\d-]|\\d+(?=\\d\\d\\s)|[a-zA-Z]{2,}))', nvidia_gpu_map);
 	gen_filter_map(nvidia_gpu_map);
-	gen_filter_toolbar(toolbar, nvidia_gpu_map);
+	gen_filter_toolbar(tools, nvidia_gpu_map);
 
 	gen_filter_keyword('((?:AMD|Radeon|FirePro)\\s+(?:[a-zA-Z]+\\s+)?(?:[a-zA-Z][\\d-]|\\d|[a-zA-Z]{2,}))', amd_gpu_map);
 	gen_filter_map(amd_gpu_map);
-	gen_filter_toolbar(toolbar, amd_gpu_map);
+	gen_filter_toolbar(tools, amd_gpu_map);
 
 	/*
   for (let k of Object.keys(gpu_map)) {
@@ -287,3 +286,44 @@ filter_cpus();
 filter_gpus();
 
 console.log(`=== /cpu benchmark filter on '${location.href}' ===`);
+
+
+/*
+let intel_cpu_map = {
+	'Atom': {},
+	'Celeron': {},
+	'Core\\s+i3': {},
+	'Core\\s+i5': {},
+	//'Core\\s+i7': {},
+	//'Core\\s+i9': {},
+	'Core': {},
+	'Pentium': {},
+
+	//'Xeon\\s+X': {},
+	'Xeon\\s+D': {},
+	'Xeon\\s+E3': {},
+	'Xeon\\s+E5': {},
+	'Xeon\\s+W': {},
+	'Xeon\\s+Silver': {},
+	'Xeon\\s+Gold': {},
+	//'Xeon\\s+Platinum': {},
+
+	'Xeon': {},
+};
+
+let amd_cpu_map = {
+	'Athlon': {},
+
+	'FX': {},
+
+	'Opteron': {},
+
+	'Ryzen\\s+3': {},
+	'Ryzen\\s+5': {},
+	'Ryzen\\s+7': {},
+
+	'EPYC\\s+3': {},
+	'EPYC\\s+7': {},
+	'Threadripper': {},
+};
+*/
