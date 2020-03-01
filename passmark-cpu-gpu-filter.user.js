@@ -1,6 +1,6 @@
 // ==UserScript==
-// @name     CPU Benchmark Filter
-// @version  1
+// @name     Passmark CPU/GPU Filter
+// @version  2
 // @match    https://www.cpubenchmark.net/cpu_lookup.php*
 // @match    https://www.cpubenchmark.net/*_cpus.html*
 // @match    https://www.videocardbenchmark.net/*_gpus.html
@@ -129,7 +129,7 @@ function create_filter_toolbar() {
 	toolbar.style.zIndex = '10000';
 	toolbar.style.fontSize = 'small';
 	toolbar.style.padding = '4px';
-	toolbar.style.maxWidth = '9rem';
+	toolbar.style.maxWidth = '11rem';
 	toolbar.style.maxHeight = '80%';
 	toolbar.style.overflowY = 'scroll';
 
@@ -265,11 +265,11 @@ function filter_gpus() {
 	gen_filter_map(intel_gpu_map);
 	gen_filter_toolbar(toolbar, intel_gpu_map);
 
-	gen_filter_keyword('((?:Nvidia|Geforce|TITAN|Quadro|Tesla)\\s+(?:[a-zA-Z]+\\s+)?(?:[a-zA-Z][\\d-]|\\d|[a-zA-Z]{2,}))', nvidia_gpu_map);
+	gen_filter_keyword('((?:Nvidia|Geforce|TITAN|Quadro|Tesla)\\s+(?:[a-zA-Z]+\\s+)?(?:[a-zA-Z][\\d-]|\\d+(?=\\d\\d\\s)|[a-zA-Z]{2,}))', nvidia_gpu_map);
 	gen_filter_map(nvidia_gpu_map);
 	gen_filter_toolbar(toolbar, nvidia_gpu_map);
 
-	gen_filter_keyword('((?:Radeon|FirePro)\\s+(?:[a-zA-Z]\\s+)?(?:[a-zA-Z][\\d-]|\\d|[a-zA-Z]{2,}))', amd_gpu_map);
+	gen_filter_keyword('((?:AMD|Radeon|FirePro)\\s+(?:[a-zA-Z]+\\s+)?(?:[a-zA-Z][\\d-]|\\d|[a-zA-Z]{2,}))', amd_gpu_map);
 	gen_filter_map(amd_gpu_map);
 	gen_filter_toolbar(toolbar, amd_gpu_map);
 
