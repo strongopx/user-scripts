@@ -16,7 +16,7 @@
 //        // @match *://*.your.domain/*
 //    2. （可选）：将解除限制的方法加到 `unlockPageHandlers' 这个数组
 //
-// @version  1.4.7
+// @version  1.4.8
 // @match    *://*.quora.com/*
 // @match    *://*.360doc.com/*
 // @match    *://*.baidu.com/*
@@ -32,6 +32,8 @@
 
 /*
 ChangeLog:
+v1.4.8:
+  5 Mar 2020, Delay before enable copy handler
 v1.4.7:
   9 Nov 2019, Enable user select by css rules on '*' selector,
               Match baikemy.com
@@ -114,7 +116,7 @@ console.log(`=== unlock-page ${location.href} ===`);
 			[
 				[, , interceptJackEvent, 0],
 				[, 'DOMContentLoaded', enableUserSelect, 0, 'body'],
-				[window, 'load', enableCopyHandler, 0],
+				[window, 'load', enableCopyHandler, 1000],
 			]
 		],
 	];
@@ -135,6 +137,7 @@ console.log(`=== unlock-page ${location.href} ===`);
 		var r0_EventTargetRegFunc = EventTarget.prototype.addEventListener;
 		//var r1_documentRegFunc = document.addEventListener;
 		function dummyEvtRegFunc(type, listener, options) {
+			//console.log('dummyEvtRegFunc', this, type, listener, options);
 			var regFunc = r0_EventTargetRegFunc;
 			if (window.ATGT_noHijackNodes) {
 				let nhjk = document.querySelectorAll(window.ATGT_noHijackNodes);
@@ -146,7 +149,6 @@ console.log(`=== unlock-page ${location.href} ===`);
 					}
 				}
 			}
-			//console.log('dummyEvtRegFunc', this, type, listener, options);
 			if (!this.ATGT_disabledEventHandlers)
 				this.ATGT_disabledEventHandlers = {};
 			if (!this.ATGT_enabledEventHandlers)
