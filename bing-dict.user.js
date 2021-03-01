@@ -71,13 +71,6 @@ v1.0:
 	12 Jan 2018, Initial version.
 */
 
-/*
-if (typeof GM_xmlhttpRequest !== 'undefined')
-	var GM = {
-		setValue: GM_setValue,
-		getValue: GM_getValue
-	};
-*/
 
 console.log(`=== bing-dict on '${location.href}' ===`);
 let dict_result_id = 'ATGT-bing-dict-result-wrapper';
@@ -575,7 +568,7 @@ class BingDictProvider extends DictProvider {
 					<a href='${url}' target='_blank'>${escapeHtml(limitedSearchString(word))}</a>
 				</span>`);
 
-			(typeof GM_xmlhttpRequest != 'undefined' && GM_xmlhttpRequest || GM.xmlHttpRequest)({
+			GM.xmlHttpRequest({
 				url: url,
 				method: 'GET',
 				onload: (response) => parseDictResult(word, response),
