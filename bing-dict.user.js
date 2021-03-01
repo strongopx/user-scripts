@@ -4,7 +4,7 @@
 // @name:zh-CN	 	必应词典，划词翻译，带英语发音
 // @description		Translate selected words by Bing Dict(Dictionary support EN to CN, CN to EN), with EN pronunciation, with CN pinyin, translation is disabled by default, check the 'Bing Dict' at bottom left to enable tranlation. Auto play pronunciation can be enabled in menu.
 // @description:zh-CN	划词翻译，使用必应词典(支持英汉、汉英)，带英语发音，带中文拼音，默认不开启翻译，勾选左下角的'Bing Dict'开启翻译。自动播放发音可以通过菜单启用。
-// @version		1.4.25
+// @version		1.4.26
 // @author		StrongOp
 // @supportURL	https://github.com/strongop/user-scripts/issues
 // @match	http://*/*
@@ -17,6 +17,7 @@
 // @grant	GM.getValue
 // @grant	GM_setValue
 // @grant	GM_getValue
+// @grant	GM.registerMenuCommand
 // @grant	GM_registerMenuCommand
 // @connect	www.bing.com
 // @connect	cn.bing.com
@@ -77,6 +78,7 @@ if (typeof GM_xmlhttpRequest !== 'undefined')
 		getValue: GM_getValue
 	};
 */
+
 console.log(`=== bing-dict on '${location.href}' ===`);
 let dict_result_id = 'ATGT-bing-dict-result-wrapper';
 const DICT_RESULT_CSS = `
@@ -187,6 +189,10 @@ const DICT_RESULT_CSS = `
 	}
 	div#${dict_result_id} .pronuce * {
 		color: gray;
+	}
+	div#${dict_result_id} audio {
+		width: 0;
+		height: 0;
 	}
 	div#${dict_result_id} .pronuce a:hover {
 		color: white;
@@ -619,7 +625,7 @@ class DictPrefs {
 			if (typeof globallyEnableAutoTrans === 'string')
 				GM.setValue('globallyEnableAutoTrans', true);
 			this.globallyEnableAutoTrans = globallyEnableAutoTrans;
-			GM_registerMenuCommand(`Globally ${(!this.globallyEnableAutoTrans) ? 'En' : 'Dis'}able Auto Translation. (Currently ${this.globallyEnableAutoTrans ? 'En' : 'Dis'}abled)`, () => { this.setAutoTranslate(!this.globallyEnableAutoTrans); });
+			GM.registerMenuCommand(`Globally ${(!this.globallyEnableAutoTrans) ? 'En' : 'Dis'}able auto translation.`, () => { this.setAutoTranslate(!this.globallyEnableAutoTrans); });
 		});
 		GM.getValue('transEnabledList', {}).then((transEnabledList) => {
 			console.log('transEnabledList', transEnabledList);
@@ -651,8 +657,8 @@ class DictPrefs {
 			this.autoplayPronuce.US = autoplayPronuce.US;
 			this.autoplayPronuce.UK = autoplayPronuce.UK;
 			if (self == top) {
-				GM_registerMenuCommand(`Globally ${(!this.autoplayPronuce.US) ? 'En' : 'Dis'}able Autoplay US pronunciation. (Currently ${this.autoplayPronuce.US ? 'En' : 'Dis'}abled)`, () => { this.setAutoplay('US', !this.autoplayPronuce.US); });
-				GM_registerMenuCommand(`Globally ${(!this.autoplayPronuce.UK) ? 'En' : 'Dis'}able Autoplay UK pronunciation. (Currently ${this.autoplayPronuce.UK ? 'En' : 'Dis'}abled)`, () => { this.setAutoplay('UK', !this.autoplayPronuce.UK); });
+				GM.registerMenuCommand(`Globally ${(!this.autoplayPronuce.US) ? 'En' : 'Dis'}able auto US pronunce.`, () => { this.setAutoplay('US', !this.autoplayPronuce.US); });
+				GM.registerMenuCommand(`Globally ${(!this.autoplayPronuce.UK) ? 'En' : 'Dis'}able auto UK pronunce.`, () => { this.setAutoplay('UK', !this.autoplayPronuce.UK); });
 			}
 		});
 	}
