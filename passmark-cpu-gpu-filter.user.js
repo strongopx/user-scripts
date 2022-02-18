@@ -6,6 +6,7 @@
 // @author   StrongOpx
 // @match    https://www.cpubenchmark.net/cpu_lookup.php*
 // @match    https://www.cpubenchmark.net/*_cpus.html*
+// @match    https://www.cpubenchmark.net/mid_range_cpus.html
 // @match    https://www.videocardbenchmark.net/video_lookup.php*
 // @match    https://www.videocardbenchmark.net/*_gpus.html
 // @grant    none
@@ -16,7 +17,7 @@
 
 console.log(`=== cpu benchmark filter on '${location.href}' ===`);
 
-const active_bg_color = '#FFFFFF80';
+const active_bg_color = 'bisque';
 const inactive_bg_color = 'slategray';
 const active_fg_color = 'black';
 const inactive_fg_color = 'lightgray';
@@ -66,16 +67,17 @@ function gen_filter_toolbar(toolbar, filter_map) {
 		}
 
 		let active = tool.attributes['active'];
-		//console.log('event on ', event.target, 'active', active);
+		// console.log('event on ', event.target, 'active', active);
 		active = !active;
 		tool.attributes['active'] = active;
 		let display = active ? '' : 'none';
 		for (let node of tool.attributes['map']) {
-			//console.log('node of map ', node);
+			// console.log('node of map ', node);
 			node.style.display = display;
 		}
 		tool.style.backgroundColor = active ? active_bg_color : inactive_bg_color;
 		tool.style.color = active ? active_fg_color : inactive_fg_color;
+    tool.style.border = active ? '1px solid black' : '1px dotted lightgray';
 		if (node.className.indexOf('filter_all') >= 0) {
 			for (let node of document.querySelectorAll('.filter_tool.filter_part')) {
 				//console.log('alter', node);
@@ -88,7 +90,7 @@ function gen_filter_toolbar(toolbar, filter_map) {
 
 	let container = document.createElement('DIV');
 	container.className = 'filter_container';
-	container.style.borderTop = 'dotted 6px white';
+	container.style.borderTop = '6px dotted white';
 	container.style.textAlign = 'left';
 	toolbar.appendChild(container);
 
@@ -99,9 +101,9 @@ function gen_filter_toolbar(toolbar, filter_map) {
 		let prod_cnt = filter_map[k]['products'].length;
 		if (prod_cnt == 0)
 			continue;
-		name += ` <span style='color: aliceblue;'>(${prod_cnt})</span>`
+		name += ` <span style='color: slateblue;'>(${prod_cnt})</span>`
 		node.innerHTML = name;
-		node.style.border = '1px black solid';
+		node.style.border = '1px solid black';
 		node.style.borderRadius = '4px';
 		node.style.padding = '2px 4px';
 		node.style.margin = '4px';
@@ -209,6 +211,9 @@ function filter_cpus() {
 		'.*': {}
 	};
 
+  let apple_cpu_map = {
+	};
+
 	let intel_cpu_map = {
 		'Intel': {},
 	};
@@ -220,6 +225,10 @@ function filter_cpus() {
 	gen_filter_map(all_cpu_map);
 	let container = gen_filter_toolbar(header, all_cpu_map);
 	gen_input_filter(container, all_cpu_map);
+
+  gen_filter_keyword('(Apple)\\s+([a-zA-Z0-9]+)', apple_cpu_map);
+	gen_filter_map(apple_cpu_map);
+	gen_filter_toolbar(tools, apple_cpu_map);
 
 	gen_filter_keyword('(Intel\\s+(?:[a-zA-Z]+\\s+)(?:[a-zA-Z][\\d-]|\\d|[a-zA-Z]{2,}))', intel_cpu_map);
 	gen_filter_map(intel_cpu_map);
@@ -251,6 +260,9 @@ function filter_gpus() {
 	let intel_gpu_map = {
 	};
 
+	let apple_gpu_map = {
+	};
+
 	let nvidia_gpu_map = {
 	};
 
@@ -269,6 +281,10 @@ function filter_gpus() {
 	gen_filter_map(nvidia_gpu_map);
 	gen_filter_toolbar(tools, nvidia_gpu_map);
 
+	gen_filter_keyword('(Apple)\\s+([a-zA-Z0-9]+)', apple_gpu_map);
+	gen_filter_map(apple_gpu_map);
+	gen_filter_toolbar(tools, apple_gpu_map);
+
 	gen_filter_keyword('((?:AMD|Radeon|FirePro)\\s+(?:[a-zA-Z]+\\s+)?(?:[a-zA-Z][\\d-]|\\d|[a-zA-Z]{2,}))', amd_gpu_map);
 	gen_filter_map(amd_gpu_map);
 	gen_filter_toolbar(tools, amd_gpu_map);
@@ -282,12 +298,16 @@ function filter_gpus() {
 }
 
 function refine_layout(e) {
-	let container = document.querySelector('#block_content > .container');
+	let container = document.querySelector('#block_content > .container') || document.querySelector('.block_content > .container')
 	let marginLeft = (container.parentNode.clientWidth - container.clientWidth) / 2 - 20;
 	container.style.marginLeft = marginLeft + 'px';
 }
 
-refine_layout();
+try {
+	refine_layout();
+} catch (e) {
+	console.log('refine_layout error', e);
+}
 window.addEventListener('resize', refine_layout);
 
 filter_cpus();
