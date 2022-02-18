@@ -1,14 +1,11 @@
 // ==UserScript==
 // @namespace  ATGT
 // @name     Passmark CPU/GPU Filter
-// @version  3
+// @version  4
 // @description  Passmark CPU/GPU Filter by Brand, Model or Inputed Text. @ cpubenchmark, videocardbenchmark.
 // @author   StrongOpx
-// @match    https://www.cpubenchmark.net/cpu_lookup.php*
-// @match    https://www.cpubenchmark.net/*_cpus.html*
-// @match    https://www.cpubenchmark.net/mid_range_cpus.html
-// @match    https://www.videocardbenchmark.net/video_lookup.php*
-// @match    https://www.videocardbenchmark.net/*_gpus.html
+// @match    https://www.cpubenchmark.net/*
+// @match    https://www.videocardbenchmark.net/*
 // @grant    none
 // @icon     https://www.cpubenchmark.net/favicon.ico
 // @run-at   document-end
@@ -203,6 +200,10 @@ function create_filter_toolbar() {
 
 function filter_cpus() {
 	if (!/cpu/i.test(location.href)) {
+    console.log('not cpu page');
+		return;
+	}
+	if (document.querySelectorAll('ul.chartlist .prdname').length == 0) {
 		return;
 	}
 
@@ -227,7 +228,7 @@ function filter_cpus() {
 	let container = gen_filter_toolbar(header, all_cpu_map);
 	gen_input_filter(container, all_cpu_map);
 
-  gen_filter_keyword('(Apple)\\s+([a-zA-Z0-9]+)', apple_cpu_map);
+	gen_filter_keyword('(Apple)\\s+([a-zA-Z0-9]+)', apple_cpu_map);
 	gen_filter_map(apple_cpu_map);
 	gen_filter_toolbar(tools, apple_cpu_map);
 
@@ -248,7 +249,11 @@ function filter_cpus() {
 }
 
 function filter_gpus() {
-	if (!/gpu/i.test(location.href)) {
+	if (!/video/i.test(location.href)) {
+    console.log('not gpu page');
+		return;
+	}
+	if (document.querySelectorAll('ul.chartlist .prdname').length == 0) {
 		return;
 	}
 
@@ -261,8 +266,8 @@ function filter_gpus() {
 	let intel_gpu_map = {
 	};
 
-	let apple_gpu_map = {
-	};
+	//let apple_gpu_map = {
+	//};
 
 	let nvidia_gpu_map = {
 	};
@@ -290,11 +295,11 @@ function filter_gpus() {
 	gen_filter_map(amd_gpu_map);
 	gen_filter_toolbar(tools, amd_gpu_map);
 
-	/*
+/*
   for (let k of Object.keys(gpu_map)) {
 		console.log('k', k, gpu_map[k]);
 	}
-  */
+*/
 
 }
 
