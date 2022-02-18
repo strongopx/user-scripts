@@ -4,7 +4,7 @@
 // @name:zh-CN	 	必应词典，划词翻译，带英语发音
 // @description		Translate selected words by Bing Dict(Dictionary support EN to CN, CN to EN), with EN pronunciation, with CN pinyin, translation is disabled by default, check the 'Bing Dict' at bottom left to enable tranlation. Auto play pronunciation can be enabled in menu.
 // @description:zh-CN	划词翻译，使用必应词典(支持英汉、汉英)，带英语发音，带中文拼音，默认不开启翻译，勾选左下角的'Bing Dict'开启翻译。自动播放发音可以通过菜单启用。
-// @version		1.4.26
+// @version		1.4.27
 // @author		StrongOp
 // @supportURL	https://github.com/strongop/user-scripts/issues
 // @match	http://*/*
@@ -21,6 +21,7 @@
 // @grant	GM_registerMenuCommand
 // @connect	www.bing.com
 // @connect	cn.bing.com
+// @connect	dict.bing.com
 // @icon	https://www.bing.com/favicon.ico
 // @run-at	document-end
 // ==/UserScript==
@@ -366,12 +367,25 @@ class BingDictProvider extends DictProvider {
 				title="Click to enable/disable translation with Bing Dict" ><label for="enableTrans"><img src='${bingIcon}' alt='Bing Dict' title="Click to enable/disable translation with Bing Dict"></label>
 			`;
 		this.resultView.setProvider(this);
-		this.baseURL = 'https://cn.bing.com/';
+		this.baseDomain = 'dict.bing.com';
+		this.baseURL = `https://${this.baseDomain}`;
+		this.dictMarketIsCN = false;
 	}
 
 	search(word) {
 		//console.log(`>>> do search ${word}`);
 		let self = this;
+
+    if (!this.dictMarketIsCN) {
+      let changeMarketURL = `https://www.bing.com/?mkt=zh-CN`;
+      (typeof GM_xmlhttpRequest != 'undefined' && GM_xmlhttpRequest || GM.xmlHttpRequest)({
+				url: changeMarketURL,
+				method: 'GET',
+				onload: (response) => { self.dictMarketIsCN = true; },
+				onerror: (response) => { console.log('Change market failed. Change to CN what so ever!'); self.dictMarketIsCN = true; },
+			});
+    }
+
 		function limitedSearchString(headword) {
 			return `${headword.substring(0, 77)}${(headword.length >= 77) ? '...' : ''}`;
 		}
@@ -521,7 +535,7 @@ class BingDictProvider extends DictProvider {
 		}
 
 		const FAILURE_MSG = `<span class='margin-for-badget'>No result for '${escapeHtml(limitedSearchString(word))}'.<span><br />
-							Try <a href='https://cn.bing.com/translator' target='_blank'>Microsoft Translator</a>.`;
+							Try <a href='https://${self.baseDomain}/translator?mkt=zh-CN' target='_blank'>Microsoft Translator</a>.`;
 
 		function parseDictResult(word, response) {
 			//console.log('search dict ok', response);
@@ -562,7 +576,7 @@ class BingDictProvider extends DictProvider {
 			} else {
 				//console.log('cache miss');
 			}
-			let url = 'http://cn.bing.com/dict/search?q=' + encodeURIComponent(word);
+			let url = `${self.baseURL}/search?q=${encodeURIComponent(word)}&mkt=zh-CN`;
 			console.log(url);
 			self.resultView.setResult(`Searching <span class='headword'>
 					<a href='${url}' target='_blank'>${escapeHtml(limitedSearchString(word))}</a>
