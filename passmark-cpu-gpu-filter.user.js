@@ -69,7 +69,7 @@ function gen_filter_toolbar(toolbar, filter_map) {
 		//console.log('event on ', event.target, 'active', active);
 		active = !active;
 		tool.attributes['active'] = active;
-		let display = active ? 'block' : 'none';
+		let display = active ? '' : 'none';
 		for (let node of tool.attributes['map']) {
 			//console.log('node of map ', node);
 			node.style.display = display;
@@ -126,11 +126,11 @@ function gen_input_filter(header, all_cpu_map) {
 	function update_filter(e) {
 		let flt = e.target.value;
 		try {
-      flt = flt.replace(/\s+/, '.*');
+			flt = flt.replace(/\s+/, '.*');
 			let regex = new RegExp(flt, 'i');
 			let products = all_cpu_map[Object.keys(all_cpu_map)[0]]['products'];
 			for (let node of products) {
-				node.style.display = regex.test(node.innerText) ? 'block' : 'none';
+				node.style.display = regex.test(node.innerText) ? '' : 'none';
 			}
 		} catch (e) {
 			console.log('update filter for input error', e);
@@ -280,6 +280,15 @@ function filter_gpus() {
   */
 
 }
+
+function refine_layout(e) {
+	let container = document.querySelector('#block_content > .container');
+	let marginLeft = (container.parentNode.clientWidth - container.clientWidth) / 2 - 20;
+	container.style.marginLeft = marginLeft + 'px';
+}
+
+refine_layout();
+window.addEventListener('resize', refine_layout);
 
 filter_cpus();
 
