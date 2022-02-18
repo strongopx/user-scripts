@@ -1,7 +1,7 @@
 // ==UserScript==
 // @namespace  ATGT
 // @name     Passmark CPU/GPU Filter
-// @version  2
+// @version  3
 // @description  Passmark CPU/GPU Filter by Brand, Model or Inputed Text. @ cpubenchmark, videocardbenchmark.
 // @author   StrongOpx
 // @match    https://www.cpubenchmark.net/cpu_lookup.php*
@@ -77,13 +77,14 @@ function gen_filter_toolbar(toolbar, filter_map) {
 		}
 		tool.style.backgroundColor = active ? active_bg_color : inactive_bg_color;
 		tool.style.color = active ? active_fg_color : inactive_fg_color;
-    tool.style.border = active ? '1px solid black' : '1px dotted lightgray';
+		tool.style.border = active ? '1px solid black' : '1px dotted lightgray';
 		if (node.className.indexOf('filter_all') >= 0) {
 			for (let node of document.querySelectorAll('.filter_tool.filter_part')) {
 				//console.log('alter', node);
 				node.attributes['active'] = active;
 				node.style.background = active ? active_bg_color : inactive_bg_color;
 				node.style.color = active ? active_fg_color : inactive_fg_color;
+				node.style.border = active ? '1px solid black' : '1px dotted lightgray';
 			}
 		}
 	}
