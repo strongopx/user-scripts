@@ -2,7 +2,7 @@
 // @namespace  ATGT
 // @name     Passmark CPU/GPU Filter
 // @version  2
-// @description  Passmark CPU/GPU Filter by Brand, Model or Inputed Text
+// @description  Passmark CPU/GPU Filter by Brand, Model or Inputed Text. @ cpubenchmark, videocardbenchmark.
 // @author   StrongOpx
 // @match    https://www.cpubenchmark.net/cpu_lookup.php*
 // @match    https://www.cpubenchmark.net/*_cpus.html*
