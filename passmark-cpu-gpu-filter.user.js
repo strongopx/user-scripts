@@ -155,7 +155,7 @@ function create_filter_toolbar() {
 	toolbar.style.borderRadius = '4px';
 	toolbar.style.lineHeight = '1em';
 	toolbar.style.position = 'fixed';
-	toolbar.style.right = '2px';
+	toolbar.style.right = '8px';
 	toolbar.style.top = '120px';
 	toolbar.style.backgroundColor = inactive_bg_color;
 	toolbar.style.color = active_fg_color;
