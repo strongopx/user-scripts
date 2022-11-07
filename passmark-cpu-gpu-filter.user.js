@@ -1,7 +1,7 @@
 // ==UserScript==
 // @namespace  ATGT
 // @name     Passmark CPU/GPU Filter
-// @version  4
+// @version  5
 // @description  Passmark CPU/GPU Filter by Brand, Model or Inputed Text. @ cpubenchmark, videocardbenchmark.
 // @author   StrongOpx
 // @match    https://www.cpubenchmark.net/*
@@ -72,16 +72,18 @@ function gen_filter_toolbar(toolbar, filter_map) {
 			// console.log('node of map ', node);
 			node.style.display = display;
 		}
-		tool.style.backgroundColor = active ? active_bg_color : inactive_bg_color;
-		tool.style.color = active ? active_fg_color : inactive_fg_color;
-		tool.style.border = active ? '1px solid black' : '1px dotted lightgray';
+		//tool.style.backgroundColor = active ? active_bg_color : inactive_bg_color;
+		//tool.style.color = active ? active_fg_color : inactive_fg_color;
+		//tool.style.border = active ? '1px solid black' : '1px dotted lightgray';
+		tool.innerHTML = tool.attributes[active && 'activeName' || 'inactiveName']
 		if (node.className.indexOf('filter_all') >= 0) {
 			for (let node of document.querySelectorAll('.filter_tool.filter_part')) {
 				//console.log('alter', node);
 				node.attributes['active'] = active;
-				node.style.background = active ? active_bg_color : inactive_bg_color;
-				node.style.color = active ? active_fg_color : inactive_fg_color;
-				node.style.border = active ? '1px solid black' : '1px dotted lightgray';
+				//node.style.background = active ? active_bg_color : inactive_bg_color;
+				//node.style.color = active ? active_fg_color : inactive_fg_color;
+				//node.style.border = active ? '1px solid black' : '1px dotted lightgray';
+				node.innerHTML = node.attributes[active && 'activeName' || 'inactiveName']
 			}
 		}
 	}
@@ -95,12 +97,11 @@ function gen_filter_toolbar(toolbar, filter_map) {
 	let node;
 	for (let k of Object.keys(filter_map).sort()) {
 		node = document.createElement('DIV');
-		let name = k.replace(/(\\\w\+?|\.)+/i, ' ');
+		let name = k.replace(/^\.\*$/, 'All').replace(/(\\\w\+?|\.)+/i, ' ');  // replace non-readable chars
 		let prod_cnt = filter_map[k]['products'].length;
 		if (prod_cnt == 0)
 			continue;
 		name += ` <span style='color: slateblue;'>(${prod_cnt})</span>`
-		node.innerHTML = name;
 		node.style.border = '1px solid black';
 		node.style.borderRadius = '4px';
 		node.style.padding = '2px 4px';
@@ -112,11 +113,15 @@ function gen_filter_toolbar(toolbar, filter_map) {
 		//node.style.float = 'left';
 		node.addEventListener('click', filter_action, { capture: true });
 		node.attributes['active'] = true;
+		node.attributes['activeName'] = '✔️ ' + name;
+		node.attributes['inactiveName'] = '&emsp; ' + name;
+		node.innerHTML = node.attributes['activeName'];
 		node.attributes['map'] = filter_map[k]['products'];
-		if (name.search(/^\s*\.?\*\s*/) < 0)
-			node.className = 'filter_tool filter_part';
-		else
+		//console.log('k ', k)
+		if (/^\s*\.\*\s*/.test(k))
 			node.className = 'filter_tool filter_all';
+		else
+			node.className = 'filter_tool filter_part';
 		container.appendChild(node);
 	}
 	return container;
@@ -159,7 +164,6 @@ function create_filter_toolbar() {
 	toolbar.style.padding = '4px';
 	toolbar.style.maxWidth = '10rem';
 	toolbar.style.maxHeight = '80%';
-	//toolbar.style.overflowY = 'scroll';
 
 	function fold_filters(event) {
 		console.log('Fold Filters');
@@ -191,6 +195,9 @@ function create_filter_toolbar() {
 	tool_sub_div.style.maxWidth = '100%';
 	tool_sub_div.style.maxHeight = '30rem';
 	tool_sub_div.style.overflowY = 'scroll';
+	//tool_sub_div.style.scrollbarWidth = '4px';
+	//tool_sub_div.style.scrollbarColor = 'rebeccapurple green;';
+
 	toolbar.appendChild(tool_sub_div);
 
 	document.body.appendChild(toolbar);
@@ -200,7 +207,7 @@ function create_filter_toolbar() {
 
 function filter_cpus() {
 	if (!/cpu/i.test(location.href)) {
-    console.log('not cpu page');
+		console.log('not cpu page');
 		return;
 	}
 	if (document.querySelectorAll('ul.chartlist .prdname').length == 0) {
@@ -213,7 +220,7 @@ function filter_cpus() {
 		'.*': {}
 	};
 
-  let apple_cpu_map = {
+	let apple_cpu_map = {
 	};
 
 	let intel_cpu_map = {
@@ -250,7 +257,7 @@ function filter_cpus() {
 
 function filter_gpus() {
 	if (!/video/i.test(location.href)) {
-    console.log('not gpu page');
+		console.log('not gpu page');
 		return;
 	}
 	if (document.querySelectorAll('ul.chartlist .prdname').length == 0) {
@@ -295,11 +302,11 @@ function filter_gpus() {
 	gen_filter_map(amd_gpu_map);
 	gen_filter_toolbar(tools, amd_gpu_map);
 
-/*
-  for (let k of Object.keys(gpu_map)) {
-		console.log('k', k, gpu_map[k]);
-	}
-*/
+	/*
+	  for (let k of Object.keys(gpu_map)) {
+			console.log('k', k, gpu_map[k]);
+		}
+	*/
 
 }
 
