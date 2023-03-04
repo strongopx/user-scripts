@@ -16,9 +16,9 @@ warn(`=== video-player-keyboard-shortcut on '${location.href}' ===`);
 function injectYoukuShortcut()
 {
 	document.addEventListener('keyup', function (event) {
-		if (event.key === 'f' || event.key === 'F') {
+		if (event.key === 'f' || event.key === 'w') {
 			warn('event ', event)
-			let element = document.querySelector(event.key == 'F' && 'icon.kui-webfullscreen-icon-0' || 'icon.kui-fullscreen-icon-0');
+			let element = document.querySelector(event.key == 'w' && 'icon.kui-webfullscreen-icon-0' || 'icon.kui-fullscreen-icon-0');
 			element && element.click();
 		}
 	});
