@@ -5,6 +5,7 @@
 // @version  1
 // @match    https://v.youku.com/v_show/*
 // @match    https://www.ixigua.com/*
+// @match    https://www.1905.com/*
 // @run-at   document-start
 // ==/UserScript==
 
@@ -28,6 +29,11 @@ let site_keymaps = [
 		url: /^https:\/\/www\.ixigua\.com\//,
 		keymap: {
 			'f': 'div[aria-label$="全屏"]',
+		}
+	}, {
+		url: /^https:\/\/www\.1905\.com/,
+		keymap: {
+			'f': '.btnControlFullscreen'
 		}
 	}
 ]
