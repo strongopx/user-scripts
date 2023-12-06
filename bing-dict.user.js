@@ -4,7 +4,7 @@
 // @name:zh-CN	 	必应词典，划词翻译，带英语发音
 // @description		Translate selected words by Bing Dict(Dictionary support EN to CN, CN to EN), with EN pronunciation, with CN pinyin, translation is disabled by default, check the 'Bing Dict' at bottom left to enable tranlation. Auto play pronunciation can be enabled in menu.
 // @description:zh-CN	划词翻译，使用必应词典(支持英汉、汉英)，带英语发音，带中文拼音，默认不开启翻译，勾选左下角的'Bing Dict'开启翻译。自动播放发音可以通过菜单启用。
-// @version		1.4.27
+// @version		1.4.28
 // @author		StrongOp
 // @supportURL	https://github.com/strongop/user-scripts/issues
 // @match	http://*/*
@@ -32,6 +32,8 @@
 /* eslint no-empty: "off" */
 /*
 Change Log:
+v1.4.28:
+	6 Dec 2023, Fix pronunciation.
 v1.4.23:
 	15 Oct 2019, Fix view removed by other script, create every time. rename names realted to enableTrans.
 v1.4.21:
@@ -249,6 +251,7 @@ class DictResultView {
 		style.appendChild(document.createTextNode(DICT_RESULT_CSS));
 		document.head.appendChild(style);
 	}
+  
 	createDictResultDiv() {
 		let div_wrapper_reset = document.createElement('DIV');
 		div_wrapper_reset.id = `${dict_result_id}-reset`;
@@ -277,6 +280,7 @@ class DictResultView {
 		// DO NOT DELETE, set mode to use different css rules
 		this.dictResultDiv.dataset['displayMode'] = (defs.length == 0) ? 'IconOnly' : 'Result';
 	}
+  
 	hideResult() {
 		this.dictResultDiv.style.display = 'none';
 		this.enableTransBtnVisibility = false;
@@ -292,6 +296,7 @@ class DictResultView {
 			event.clientY >= divRect.top && event.clientY <= divRect.bottom);
 		return isInView;
 	}
+  
 	mouseEventInDictProviderBanner(event) {
 		// if Mouse is inside dict provider to enable/disable tranlation
 		try {
@@ -303,6 +308,7 @@ class DictResultView {
 			return false;
 		}
 	}
+  
 	showEnableTransBtn() {
 		this.enableTransBtnVisibility = true;
 		let prefs = this.prefs;
@@ -389,6 +395,7 @@ class BingDictProvider extends DictProvider {
 		function limitedSearchString(headword) {
 			return `${headword.substring(0, 77)}${(headword.length >= 77) ? '...' : ''}`;
 		}
+    
 		/*
 		function playAudio(audioLink) {
 			let audio = new Audio(audioLink);
@@ -401,13 +408,13 @@ class BingDictProvider extends DictProvider {
 			try {
 				let linkElem = elem.childNodes[0];
 				//console.log('PronuceLink', linkElem);
-				let handler = linkElem.attributes['onclick'].value;
-				let matches = handler.match(/'(https?:\/\/[^ ']*)'\s*,\s*'([^']*)'/m);
+				voiceLink = linkElem.dataset['mp3link'];
+				//let matches = handler.match(/'(https?:\/\/[^ ']*)'\s*,\s*'([^']*)'/m);
 				//console.log('matches', matches);
-				voiceLink = matches[1];
-				//voiceIcon = matches[2];
+				//voiceLink = matches[1];
 			} catch (e) {
 				console.log('parseVoiceLink', e);
+        return '';
 			}
 			let id = `${id_prefix}_${Math.random()}`;
 			let speakerIcon = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABoAAAAZCAYAAAAv3j5gAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAA3XAAAN1wFCKJt4AAAAB3RJTUUH4wICACYBOBTr1QAAAvZJREFUSMed1k2IVlUYB/Dfe8dRabqS9mFiEn3ZqQxC2lQU5a6FEBE4tAhaJUqrK0HRxkWLoBNupJA2UlCuigipdtXCwCyirEsLw4omM8aak5jizNui5x1ub+/YzDxwuefc8/F//s/n7VlA+vvv0Nt9HJSctuENNDhUN+3cqDO/70vGZv8Z102r5DQ/rkYdKDnp7T6u5DRectqJ97EBD2BsIeUuXpyDFdhaclpbN+38WjUKpLNhF17BeMxvGHVmIFft+Q4ewqd4tuQ0PmBWdQE6lFeXnPZi39Bd16I3rNiQXBmK7cS2/5huwKLktB3v4fkRSm8cwagX59bG/F28hho7Sk5rYEXJqcKLuB03hS/WLGCd1SPM3C85PYVnSk731k17quR0EE/gMbyAmQrPYQ8exq2XAIHLB4wGviw5TeBJ3IhXY98JfBSstpScehW2d02wBKlKTusxi/04i0dKTtfhZ3wZ++7DWIWblwiwKgLgLnyFl/AWTsf6ZPj7+5hvGQCtWyLQxnhfj6tD4zU42mEAv+H8ICUqS5e50PjzMNEtWN8x1eZ4z+BPXIPecoDmAXEGl0XenIrvg2A6H8+ES2X5ImQlNmE6LuwNBVW/U32Wx6jk1MPdof3X+DXMB390FBnHOfSXBVQ3bR8f420crpt2OoDh23hPhFmn0V+BC4G+WPkrwKbwaDDcgHti/YNOzZvAMcxV+GmJhH4ZUUx3RahP49BQGrQDoKPL8FG3lcBhTOHpumlnSk7ronaKljFbYS9OLhJjFv1OpR/47Aju77DZgAdjfKxu2rkqqN0WBXNrZ/MoudAJ2+F2faJu2tmS0yrsiET9MJiqIoLO4WzdtF/UTTsZLXtqBNDJLlC3j3U/4fEYH6yb9vR8wtZN22186qb9BHfi+NAlZ4aBRv2j4GUcwDsLdOF/t+eS06aS05GSUz+eN0tOKxcZMFX3rmqBhNQ/sFndtD9iEq/H0jcREJeMyLhjrhudvUVqd0X8aHyGH0b45X/lb9cUC+N7uVGjAAAAAElFTkSuQmCC';
@@ -418,6 +425,7 @@ class BingDictProvider extends DictProvider {
 				</a>`;
 			return voiceHTML;
 		}
+    
 		function parsePronuce(elem) {
 			let prUS = elem.querySelector('.hd_prUS');
 			let prUK = elem.querySelector('.hd_pr');
@@ -429,6 +437,7 @@ class BingDictProvider extends DictProvider {
 				pronText = `<span>${escapeHtml(elem.innerText)}</span>`;
 			return pronText;
 		}
+    
 		function parseDefinition(page, url) {
 			//console.log('parseDefinition');
 			let qdef = page.querySelector('.qdef');
@@ -624,6 +633,7 @@ class DictPrefs {
 			//console.log(`updated ${key} => ${value} into transEnabledList`, transEnabledList);
 		});
 	}
+  
 	checkEnableTrans() {
 		GM.getValue('globallyEnableAutoTrans', {}).then((globallyEnableAutoTrans) => {
 			console.log('globallyEnableAutoTrans', globallyEnableAutoTrans);
@@ -634,6 +644,7 @@ class DictPrefs {
 			this.globallyEnableAutoTrans = globallyEnableAutoTrans;
 			GM.registerMenuCommand(`Globally ${(!this.globallyEnableAutoTrans) ? 'En' : 'Dis'}able auto translation.`, () => { this.setAutoTranslate(!this.globallyEnableAutoTrans); });
 		});
+    
 		GM.getValue('transEnabledList', {}).then((transEnabledList) => {
 			console.log('transEnabledList', transEnabledList);
 			if (typeof transEnabledList === 'undefined')
@@ -649,11 +660,13 @@ class DictPrefs {
 			}
 		});
 	}
+  
 	setAutoTranslate(en) {
 		this.globallyEnableAutoTrans = en;
 		GM.setValue('globallyEnableAutoTrans', en);
 		location.reload();
 	}
+  
 	checkAutoPlay() {
 		GM.getValue('autoplayPronuce', {}).then((autoplayPronuce) => {
 			console.log('autoplay', autoplayPronuce);
@@ -669,6 +682,7 @@ class DictPrefs {
 			}
 		});
 	}
+  
 	setAutoplay(lang, on) {
 		console.log(`${on ? 'en' : 'dis'}able auto play of ${lang} pronunciation`);
 		this.autoplayPronuce[lang] = on;
