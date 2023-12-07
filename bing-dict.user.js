@@ -1,11 +1,12 @@
 // ==UserScript==
 // @namespace		ATGT
-// @name		Bing Dict, Translate by selecting words, with pronunciation
+// @name			Bing Dict, Translate by selecting words, with pronunciation
 // @name:zh-CN	 	必应词典，划词翻译，带英语发音
-// @description		Translate selected words by Bing Dict(Dictionary support EN to CN, CN to EN), with EN pronunciation, with CN pinyin, translation is disabled by default, check the 'Bing Dict' at bottom left to enable tranlation. Auto play pronunciation can be enabled in menu.
-// @description:zh-CN	划词翻译，使用必应词典(支持英汉、汉英)，带英语发音，带中文拼音，默认不开启翻译，勾选左下角的'Bing Dict'开启翻译。自动播放发音可以通过菜单启用。
-// @version		1.4.28
+// @description		Translate selected words by Bing Dict(Dictionary support EN to CN, CN to EN), with EN pronunciation, with CN pinyin. Translation is enabled by default, click the 'Bing Dict' icon at bottom left to toggle translation. Auto play pronunciation can be enabled in menu.
+// @description:zh-CN	划词翻译，使用必应词典(支持英汉、汉英)，带英语发音，带中文拼音。默认开启翻译，点击左下角的'Bing Dict'图标来开启/关闭翻译。自动发音可以通过菜单启用。
+// @version		1.4.29
 // @author		StrongOp
+// @license     MIT
 // @supportURL	https://github.com/strongop/user-scripts/issues
 // @match	http://*/*
 // @match	https://*/*
@@ -32,6 +33,8 @@
 /* eslint no-empty: "off" */
 /*
 Change Log:
+1.4.29:
+	7 Dec 2023, Fix mobile browser support.
 v1.4.28:
 	6 Dec 2023, Fix pronunciation.
 v1.4.23:
@@ -251,7 +254,7 @@ class DictResultView {
 		style.appendChild(document.createTextNode(DICT_RESULT_CSS));
 		document.head.appendChild(style);
 	}
-  
+
 	createDictResultDiv() {
 		let div_wrapper_reset = document.createElement('DIV');
 		div_wrapper_reset.id = `${dict_result_id}-reset`;
@@ -280,7 +283,7 @@ class DictResultView {
 		// DO NOT DELETE, set mode to use different css rules
 		this.dictResultDiv.dataset['displayMode'] = (defs.length == 0) ? 'IconOnly' : 'Result';
 	}
-  
+
 	hideResult() {
 		this.dictResultDiv.style.display = 'none';
 		this.enableTransBtnVisibility = false;
@@ -290,25 +293,49 @@ class DictResultView {
 	}
 
 	mouseEventInView(event) {
+		if (!/touch|mouse/.test(event.type) && !event.clientX)
+			return;
+
+		let lastPos;
+		if (/touch/.test(event.type)) {
+			let touches = event.touches;
+			lastPos = touches.item(touches.length-1) || {}
+			this.lastTouch = lastPos;
+			this.lastTouchTime = Date.now();
+		} else {
+			lastPos = event;
+		}
+
 		// if Mouse is inside result element
 		let divRect = this.dictResultDiv.getBoundingClientRect();
-		let isInView = (event.clientX >= divRect.left && event.clientX <= divRect.right &&
-			event.clientY >= divRect.top && event.clientY <= divRect.bottom);
+		let isInView = (lastPos.clientX >= divRect.left && lastPos.clientX <= divRect.right &&
+			lastPos.clientY >= divRect.top && lastPos.clientY <= divRect.bottom);
+		// console.log(`InView ${isInView} lastpos ${lastPos.clientX},${lastPos.clientY}, divRect`,  JSON.stringify(divRect));
 		return isInView;
 	}
-  
+
 	mouseEventInDictProviderBanner(event) {
+		if (!/touch|mouse/.test(event.type))
+			return;
+
+		let lastPos;
+		if (/touch/.test(event.type)) {
+			lastPos = event.touches.item(event.touches.length-1) || {};
+		} else {
+			lastPos = event;
+		}
+
 		// if Mouse is inside dict provider to enable/disable tranlation
 		try {
 			let divRect = this.dictResultDiv.querySelector(`.dict-provider ~ label img`).getBoundingClientRect();
-			let isInView = (event.clientX >= divRect.left && event.clientX <= divRect.right &&
-				event.clientY >= divRect.top && event.clientY <= divRect.bottom);
+			let isInView = (lastPos.clientX >= divRect.left && lastPos.clientX <= divRect.right &&
+				lastPos.clientY >= divRect.top && lastPos.clientY <= divRect.bottom);
 			return isInView;
 		} catch (e) {
 			return false;
 		}
 	}
-  
+
 	showEnableTransBtn() {
 		this.enableTransBtnVisibility = true;
 		let prefs = this.prefs;
@@ -323,7 +350,7 @@ class DictResultView {
 				view.hideResult();
 		}
 		let enableCheckbox = document.querySelector(`div#${dict_result_id} input#enableTrans`);
-		enableCheckbox.checked = this.prefs.transEnabledOnPage === TRANS_EXPLICIT_ENABLE;
+		enableCheckbox.checked = prefs.isTransEnabled();
 		enableCheckbox.onclick = enableTransBtnHandler;
 	}
 
@@ -382,20 +409,20 @@ class BingDictProvider extends DictProvider {
 		//console.log(`>>> do search ${word}`);
 		let self = this;
 
-    if (!this.dictMarketIsCN) {
-      let changeMarketURL = `https://www.bing.com/?mkt=zh-CN`;
-      (typeof GM_xmlhttpRequest != 'undefined' && GM_xmlhttpRequest || GM.xmlHttpRequest)({
+		if (!this.dictMarketIsCN) {
+			let changeMarketURL = `https://www.bing.com/?mkt=zh-CN`;
+			(typeof GM_xmlhttpRequest != 'undefined' && GM_xmlhttpRequest || GM.xmlHttpRequest)({
 				url: changeMarketURL,
 				method: 'GET',
 				onload: (response) => { self.dictMarketIsCN = true; },
 				onerror: (response) => { console.log('Change market failed. Change to CN what so ever!'); self.dictMarketIsCN = true; },
 			});
-    }
+		}
 
 		function limitedSearchString(headword) {
 			return `${headword.substring(0, 77)}${(headword.length >= 77) ? '...' : ''}`;
 		}
-    
+
 		/*
 		function playAudio(audioLink) {
 			let audio = new Audio(audioLink);
@@ -414,7 +441,7 @@ class BingDictProvider extends DictProvider {
 				//voiceLink = matches[1];
 			} catch (e) {
 				console.log('parseVoiceLink', e);
-        return '';
+				return '';
 			}
 			let id = `${id_prefix}_${Math.random()}`;
 			let speakerIcon = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABoAAAAZCAYAAAAv3j5gAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAA3XAAAN1wFCKJt4AAAAB3RJTUUH4wICACYBOBTr1QAAAvZJREFUSMed1k2IVlUYB/Dfe8dRabqS9mFiEn3ZqQxC2lQU5a6FEBE4tAhaJUqrK0HRxkWLoBNupJA2UlCuigipdtXCwCyirEsLw4omM8aak5jizNui5x1ub+/YzDxwuefc8/F//s/n7VlA+vvv0Nt9HJSctuENNDhUN+3cqDO/70vGZv8Z102r5DQ/rkYdKDnp7T6u5DRectqJ97EBD2BsIeUuXpyDFdhaclpbN+38WjUKpLNhF17BeMxvGHVmIFft+Q4ewqd4tuQ0PmBWdQE6lFeXnPZi39Bd16I3rNiQXBmK7cS2/5huwKLktB3v4fkRSm8cwagX59bG/F28hho7Sk5rYEXJqcKLuB03hS/WLGCd1SPM3C85PYVnSk731k17quR0EE/gMbyAmQrPYQ8exq2XAIHLB4wGviw5TeBJ3IhXY98JfBSstpScehW2d02wBKlKTusxi/04i0dKTtfhZ3wZ++7DWIWblwiwKgLgLnyFl/AWTsf6ZPj7+5hvGQCtWyLQxnhfj6tD4zU42mEAv+H8ICUqS5e50PjzMNEtWN8x1eZ4z+BPXIPecoDmAXEGl0XenIrvg2A6H8+ES2X5ImQlNmE6LuwNBVW/U32Wx6jk1MPdof3X+DXMB390FBnHOfSXBVQ3bR8f420crpt2OoDh23hPhFmn0V+BC4G+WPkrwKbwaDDcgHti/YNOzZvAMcxV+GmJhH4ZUUx3RahP49BQGrQDoKPL8FG3lcBhTOHpumlnSk7ronaKljFbYS9OLhJjFv1OpR/47Aju77DZgAdjfKxu2rkqqN0WBXNrZ/MoudAJ2+F2faJu2tmS0yrsiET9MJiqIoLO4WzdtF/UTTsZLXtqBNDJLlC3j3U/4fEYH6yb9vR8wtZN22186qb9BHfi+NAlZ4aBRv2j4GUcwDsLdOF/t+eS06aS05GSUz+eN0tOKxcZMFX3rmqBhNQ/sFndtD9iEq/H0jcREJeMyLhjrhudvUVqd0X8aHyGH0b45X/lb9cUC+N7uVGjAAAAAElFTkSuQmCC';
@@ -425,7 +452,7 @@ class BingDictProvider extends DictProvider {
 				</a>`;
 			return voiceHTML;
 		}
-    
+
 		function parsePronuce(elem) {
 			let prUS = elem.querySelector('.hd_prUS');
 			let prUK = elem.querySelector('.hd_pr');
@@ -437,7 +464,7 @@ class BingDictProvider extends DictProvider {
 				pronText = `<span>${escapeHtml(elem.innerText)}</span>`;
 			return pronText;
 		}
-    
+
 		function parseDefinition(page, url) {
 			//console.log('parseDefinition');
 			let qdef = page.querySelector('.qdef');
@@ -449,6 +476,7 @@ class BingDictProvider extends DictProvider {
 				headword = escapeHtml(hd_area.querySelector('#headword').innerText);
 				pronuce = parsePronuce(hd_area.querySelector('.hd_tf_lh'));
 			} catch (e) {
+				console.log('parse headword/pronunce fail');
 			}
 
 
@@ -468,6 +496,7 @@ class BingDictProvider extends DictProvider {
 				}
 				defs += '</ul>';
 			} catch (e) {
+				console.log('parse defs fail');
 				defs = '';
 			}
 
@@ -553,8 +582,8 @@ class BingDictProvider extends DictProvider {
 			try {
 				let doc = (new DOMParser()).parseFromString(response.responseText, 'text/html');
 				defs = parseDictResultDom(doc, url);
-				if (!defs)
-					defs = FAILURE_MSG;
+				// if (!defs)
+				// 	defs = FAILURE_MSG;
 				dictCache[word] = defs;
 			} catch (e) {
 				console.log('parseDictResult failed:\n ', e, e.stack);
@@ -586,7 +615,7 @@ class BingDictProvider extends DictProvider {
 				//console.log('cache miss');
 			}
 			let url = `${self.baseURL}/search?q=${encodeURIComponent(word)}&mkt=zh-CN`;
-			console.log(url);
+			console.log('querying', url);
 			self.resultView.setResult(`Searching <span class='headword'>
 					<a href='${url}' target='_blank'>${escapeHtml(limitedSearchString(word))}</a>
 				</span>`);
@@ -627,30 +656,34 @@ class DictPrefs {
 
 	updateTransEnabledList(key, value) {
 		GM.getValue('transEnabledList', {}).then((transEnabledList) => {
-			console.log(`update ${key} => ${value} into transEnabledList`, transEnabledList);
+			console.log(`update ${key} => ${value} into transEnabledList`, JSON.stringify(transEnabledList));
 			transEnabledList[key] = value;
 			GM.setValue('transEnabledList', transEnabledList);
 			//console.log(`updated ${key} => ${value} into transEnabledList`, transEnabledList);
 		});
 	}
-  
+
 	checkEnableTrans() {
 		GM.getValue('globallyEnableAutoTrans', {}).then((globallyEnableAutoTrans) => {
-			console.log('globallyEnableAutoTrans', globallyEnableAutoTrans);
+			console.log('globallyEnableAutoTrans', JSON.stringify(globallyEnableAutoTrans));
 			if (typeof globallyEnableAutoTrans === 'undefined')
 				return;
-			if (typeof globallyEnableAutoTrans === 'string')
+			if (typeof globallyEnableAutoTrans !== 'boolean') {
 				GM.setValue('globallyEnableAutoTrans', true);
+				globallyEnableAutoTrans = true;
+			}
 			this.globallyEnableAutoTrans = globallyEnableAutoTrans;
 			GM.registerMenuCommand(`Globally ${(!this.globallyEnableAutoTrans) ? 'En' : 'Dis'}able auto translation.`, () => { this.setAutoTranslate(!this.globallyEnableAutoTrans); });
 		});
-    
+
 		GM.getValue('transEnabledList', {}).then((transEnabledList) => {
-			console.log('transEnabledList', transEnabledList);
+			console.log('transEnabledList', JSON.stringify(transEnabledList));
 			if (typeof transEnabledList === 'undefined')
 				return;
-			if (typeof transEnabledList === 'string')
+			if (typeof transEnabledList !== 'object') {
 				GM.setValue('transEnabledList', {});
+				transEnabledList = {};
+			}
 			if (location.host in transEnabledList) {
 				this.transEnabledOnPage = transEnabledList[location.host];
 				if (typeof this.transEnabledOnPage === 'boolean') {
@@ -660,20 +693,22 @@ class DictPrefs {
 			}
 		});
 	}
-  
+
 	setAutoTranslate(en) {
 		this.globallyEnableAutoTrans = en;
 		GM.setValue('globallyEnableAutoTrans', en);
 		location.reload();
 	}
-  
+
 	checkAutoPlay() {
 		GM.getValue('autoplayPronuce', {}).then((autoplayPronuce) => {
-			console.log('autoplay', autoplayPronuce);
+			console.log('autoplay', JSON.stringify(autoplayPronuce));
 			if (!autoplayPronuce)
 				return;
-			if (typeof autoplayPronuce === 'string')
+			if (typeof autoplayPronuce !== 'object') {
 				GM.setValue('autoplayPronuce', {});
+				autoplayPronuce = {};
+			}
 			this.autoplayPronuce.US = autoplayPronuce.US;
 			this.autoplayPronuce.UK = autoplayPronuce.UK;
 			if (self == top) {
@@ -682,7 +717,7 @@ class DictPrefs {
 			}
 		});
 	}
-  
+
 	setAutoplay(lang, on) {
 		console.log(`${on ? 'en' : 'dis'}able auto play of ${lang} pronunciation`);
 		this.autoplayPronuce[lang] = on;
@@ -695,18 +730,36 @@ var dictPrefs = new DictPrefs();
 
 var dictResultView = new DictResultView(dictPrefs);
 var bingDict = new BingDictProvider(dictPrefs, dictResultView);
+var selChangeTimer;
 
-document.addEventListener('mouseup', function (event) {
+/*
+click/touch --> `Bing Icon` to toggle Enable/Disable
+            --> Click page to hide `result view`
+			--> Show `Bing Icon`
+			--> Click/SelectWord in `result view`
+			--> Do Translate
+*/
+
+function onSelectionChange(event) {
+	if (event.type = 'selectionchange') {
+		clearTimeout(selChangeTimer);
+		let delay = Date.now() - dictResultView.lastTouchTime
+		// console.log('selchange delay after touch ', delay)
+		if (delay < 500) {
+			event.clientX = dictResultView.lastTouch.clientX;
+			event.clientY = dictResultView.lastTouch.clientY;
+		}
+	}
 	if (!document.querySelector(`#${dict_result_id}`)) {
 		dictResultView.initView();
 	}
-	// click on enable/disable translation area, return, so the checkbox handler can be called
+	// click on enable/disable translation Icon, return, so the checkbox handler can be called
 	if (dictResultView.mouseEventInDictProviderBanner(event))
 		return;
 
 	// get selected word/sentense
 	CurrentSelWord = window.getSelection().toString().replace(/^\s*|\s*$/g, '');
-	console.log(`selected: '${CurrentSelWord}', length ${CurrentSelWord.length}`);
+	console.log(`selected: '${CurrentSelWord}', length ${CurrentSelWord.length}, event ${event.type}`);
 
 	// click on page other than result view hides the result view
 	if (!dictResultView.mouseEventInView(event) && CurrentSelWord.length == 0) {
@@ -731,8 +784,36 @@ document.addEventListener('mouseup', function (event) {
 		return;
 	}
 
-	bingDict.search(CurrentSelWord);
-});
+	if (CurrentSelWord.length == 0) {
+		// no word to search
+		dictResultView.hideResult();
+	} else if (event.type = 'selectionchange') {
+		selChangeTimer = setTimeout(() => bingDict.search(CurrentSelWord), 700);
+	} else if (event.type == 'mouseup') {
+		bingDict.search(CurrentSelWord);
+	} else {
+		// 'touchend' does nothing, only hides dict result view
+	}
+}
+
+function is_touch_present() {
+	return ('ontouchstart' in window) || ('onmsgesturechange' in window);
+}
+
+function is_mouse_present() {
+	return (('onmousedown' in window) && ('onmouseup' in window) && ('onmousemove' in window) && ('onclick' in window) && ('ondblclick' in window) && ('onmousemove' in window) && ('onmouseover' in window) && ('onmouseout' in window) && ('oncontextmenu' in window));
+}
+
+console.log("Touch Present: " + is_touch_present());
+console.log("Mouse Present: " + is_mouse_present());
+
+
+if (is_touch_present()) {
+	document.addEventListener('selectionchange', onSelectionChange);
+	document.addEventListener('touchstart', onSelectionChange);
+} else {
+	document.addEventListener('mouseup', onSelectionChange);
+}
 
 function dictTest() {
 	let testWords = [
