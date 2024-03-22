@@ -4,7 +4,7 @@
 // @name:zh-CN	 	必应词典，划词翻译，带英语发音
 // @description		Translate selected words by Bing Dict(Dictionary support EN to CN, CN to EN), with EN pronunciation, with CN pinyin. Translation is enabled by default, click the 'Bing Dict' icon at bottom left to toggle translation. Auto play pronunciation can be enabled in menu.
 // @description:zh-CN	划词翻译，使用必应词典(支持英汉、汉英)，带英语发音，带中文拼音。默认开启翻译，点击左下角的'Bing Dict'图标来开启/关闭翻译。自动发音可以通过菜单启用。
-// @version		1.4.29
+// @version		1.4.30
 // @author		StrongOp
 // @license     MIT
 // @supportURL	https://github.com/strongop/user-scripts/issues
@@ -33,6 +33,8 @@
 /* eslint no-empty: "off" */
 /*
 Change Log:
+1.4.30:
+	22 Mar 2024, Fix for bing dict web chagne.
 1.4.29:
 	7 Dec 2023, Fix mobile browser support.
 v1.4.28:
@@ -401,6 +403,7 @@ class BingDictProvider extends DictProvider {
 			`;
 		this.resultView.setProvider(this);
 		this.baseDomain = 'dict.bing.com';
+		this.webDomain = 'www.bing.com';
 		this.baseURL = `https://${this.baseDomain}`;
 		this.dictMarketIsCN = false;
 	}
@@ -503,77 +506,17 @@ class BingDictProvider extends DictProvider {
 			return headword + pronuce + defs;
 		}
 
-		function parseMachTrans(page, url) {
-			//console.log('parseMachTrans');
-			try {
-				let trans_area = page.querySelector('.lf_area');
-				let smt_hw_elem = trans_area.querySelector('.smt_hw');
-				let smt_hw = escapeHtml(smt_hw_elem.innerText);
-				let headword = escapeHtml(smt_hw_elem.nextElementSibling.innerText);
-				let trans_result = escapeHtml(smt_hw_elem.nextElementSibling.nextElementSibling.innerText);
-				smt_hw = `<div class='mach_trans margin-for-badget'>${smt_hw}</div>`;
-				headword = `<div class='headsentence'>
-						<a href='${url}' target='_blank'>${limitedSearchString(headword)}</a>
-					</div>`;
-				trans_result = `<div class='mach_trans_result'>${trans_result}</div>`;
-
-				return smt_hw + headword + trans_result;
-			} catch (e) {
-				console.error('parseMachTrans error');
-				return '';
-			}
-		}
-
-		function parseSearchSuggestDetail(detail) {
-			let suggest = escapeHtml(detail.querySelector('.df_wb_a').innerText);
-			suggest = `<div class='div_title'>${suggest}</div>`;
-			let defs = '<ul>';
-			for (let s of detail.querySelectorAll('.df_wb_c')) {
-				let r0 = s.childNodes[0];
-				let r1 = s.childNodes[1];
-				defs += `<li>
-						<a class='suggest_word' href='//cn.bing.com${r0.pathname}${r0.search}' target='_blank'>
-							${escapeHtml(r0.innerText)}</a>
-						<span>${escapeHtml(r1.innerText)}<span>
-					</li>`;
-			}
-			defs += '</ul>';
-			return suggest + defs;
-		}
-
-		function parseSearchSuggest(page, url) {
-			//console.log('parseSearchSuggest');
-			let trans_area = page.querySelector('.lf_area');
-			let headword = escapeHtml(trans_area.querySelector('.dym_p').innerText);
-			let suggest = escapeHtml(trans_area.querySelector('.p2-2').innerText);
-			headword = `<div class='headword'><a href='${url}' target='_blank'>${headword}</a></div>`;
-			suggest = `<div class='div_title'>${suggest}</div>`;
-			let defs = '';
-			for (let detail of trans_area.querySelectorAll('.dym_area')) {
-				defs += parseSearchSuggestDetail(detail);
-			}
-
-			return `<div class='search_suggest_area'>${headword}${suggest}${defs}</div>`;
-		}
-
 		function parseDictResultDom(page, url) {
 			//console.log('page ', page);
 			let qdef = page.querySelector('.qdef');
-			let smt_hw = page.querySelector('.smt_hw');
-			let search_suggest = page.querySelector('.dym_area') && page.querySelector('.df_wb_c');
-			//let no_result = page.querySelector('.no_results');
 			if (qdef)
 				return parseDefinition(page, url);
-			else if (smt_hw)
-				return parseMachTrans(page, url);
-			else if (search_suggest)
-				return parseSearchSuggest(page, url);
 			else
-				return '';
+				throw new Error("No results");
 		}
 
-		const FAILURE_MSG = `<span class='margin-for-badget'>No result for '${escapeHtml(limitedSearchString(word))}'.<span><br />
-							Try <a href='https://${self.baseDomain}/translator?mkt=zh-CN' target='_blank'>Microsoft Translator</a>.`;
+		const FAILURE_MSG = `<ul>Try <a href='https://${self.webDomain}/translator?mkt=zh-CN' target='_blank'>Microsoft Translator</a></ul>
+							<ul>Try web search <a href='https://${self.webDomain}/search?q=${encodeURIComponent(word)}' target='_blank'>${escapeHtml(limitedSearchString(word))}</a></ul>`;
 
 		function parseDictResult(word, response) {
 			//console.log('search dict ok', response);
@@ -587,9 +530,8 @@ class BingDictProvider extends DictProvider {
 				dictCache[word] = defs;
 			} catch (e) {
 				console.log('parseDictResult failed:\n ', e, e.stack);
-				defs = `<span class='error'>Error</span> parsing result of
-					<a href='${url}' target='_blank'>${escapeHtml(limitedSearchString(word))}</a>, <br />
-					${FAILURE_MSG}`;
+				defs = `No results for <a href='${url}' target='_blank'>${escapeHtml(limitedSearchString(word))}</a>, <br />
+          ${FAILURE_MSG}`;
 			}
 
 			self.resultView.setResult(defs);
@@ -836,11 +778,9 @@ function dictTest() {
 		/*TODO:
 		* 1. Translation enable/disable test.
 		* 2. Audio/voice test.
-		* 3. Click on headword to open new tab of dict.bing.com
-		* 4. Select word on result view to translate
 		*/
 		</pre>`);
 }
-//dictTest();
+// dictTest();
 
 console.log(`=== /bing-dict on '${location.href}' ===`);
