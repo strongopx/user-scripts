@@ -4,7 +4,7 @@
 // @name:zh-CN	 	必应词典，划词翻译，带英语发音
 // @description		Translate selected words by Bing Dict(Dictionary support EN to CN, CN to EN), with EN pronunciation, with CN pinyin. Translation is enabled by default, click the 'Bing Dict' icon at bottom left to toggle translation. Auto play pronunciation can be enabled in menu.
 // @description:zh-CN	划词翻译，使用必应词典(支持英汉、汉英)，带英语发音，带中文拼音。默认开启翻译，点击左下角的'Bing Dict'图标来开启/关闭翻译。自动发音可以通过菜单启用。
-// @version		1.4.30
+// @version		1.4.31
 // @author		StrongOp
 // @license     MIT
 // @supportURL	https://github.com/strongop/user-scripts/issues
@@ -33,6 +33,8 @@
 /* eslint no-empty: "off" */
 /*
 Change Log:
+1.4.31:
+	3 Sep 2024, Fix parsing `octave` failure.
 1.4.30:
 	22 Mar 2024, Fix for bing dict web chagne.
 1.4.29:
@@ -301,7 +303,7 @@ class DictResultView {
 		let lastPos;
 		if (/touch/.test(event.type)) {
 			let touches = event.touches;
-			lastPos = touches.item(touches.length-1) || {}
+			lastPos = touches.item(touches.length - 1) || {}
 			this.lastTouch = lastPos;
 			this.lastTouchTime = Date.now();
 		} else {
@@ -322,7 +324,7 @@ class DictResultView {
 
 		let lastPos;
 		if (/touch/.test(event.type)) {
-			lastPos = event.touches.item(event.touches.length-1) || {};
+			lastPos = event.touches.item(event.touches.length - 1) || {};
 		} else {
 			lastPos = event;
 		}
@@ -479,7 +481,7 @@ class BingDictProvider extends DictProvider {
 				headword = escapeHtml(hd_area.querySelector('#headword').innerText);
 				pronuce = parsePronuce(hd_area.querySelector('.hd_tf_lh'));
 			} catch (e) {
-				console.log('parse headword/pronunce fail');
+				console.log('parse headword/pronunce fail', e);
 			}
 
 
@@ -494,12 +496,14 @@ class BingDictProvider extends DictProvider {
 				let def_list = def_area.querySelectorAll('li');
 				defs = '<ul>';
 				for (let def of def_list) {
+					if (def.childNodes[0].nodeName == 'I')
+						def = def.childNodes[0];
 					defs += `<li><span class='def-category'>${escapeHtml(def.childNodes[0].innerText)}</span>
 						${escapeHtml(def.childNodes[1].innerText)}</li>`;
 				}
 				defs += '</ul>';
 			} catch (e) {
-				console.log('parse defs fail');
+				console.log('parse defs fail', e);
 				defs = '';
 			}
 
@@ -676,7 +680,7 @@ var selChangeTimer;
 
 /*
 click/touch --> `Bing Icon` to toggle Enable/Disable
-            --> Click page to hide `result view`
+			--> Click page to hide `result view`
 			--> Show `Bing Icon`
 			--> Click/SelectWord in `result view`
 			--> Do Translate
